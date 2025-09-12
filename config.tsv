@@ -1,0 +1,4 @@
+key	value
+rsdir	Results/
+datadir	data/input/
+outdir	Results/plots
