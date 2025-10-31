@@ -180,3 +180,170 @@ data <- RenameCells(data, add.cell.id = sample)
   return(data)
 }
 
+
+
+
+
+GSEA <- function(data) {
+ 
+  # Añadir el símbolo como columna
+  data$mgi_symbol <- rownames(data)
+  
+  # Mapear símbolos a Entrez IDs usando org.Mm.eg.db (más confiable que biomaRt)
+  entrez_ids <- mapIds(org.Mm.eg.db,
+                       keys = rownames(data),
+                       column = "ENTREZID",
+                       keytype = "SYMBOL",
+                       multiVals = "first")
+  
+  # Añadir la columna con Entrez al dataframe
+  data$entrezgene_id <- entrez_ids[rownames(data)]
+  
+  # Filtrar filas sin EntrezID
+  data <- data[!is.na(data$entrezgene_id), ]
+  
+  # Quitar genes duplicados (si algún símbolo mapeó a la misma ID)
+  data <- data[!duplicated(data$entrezgene_id), ]
+  
+  # Reasignar rownames por EntrezID
+  rownames(data) <- data$entrezgene_id
+  
+  # Reemplazar p_val == 0 por un valor muy pequeño para evitar -Inf
+  epsilon <- 1e-300
+  data$adj.P.Val[data$adj.P.Val == 0] <- epsilon
+  
+  # Calcular la métrica de ranking
+  data$metric <- sign(data$logFC) * -log10(data$P.Value)
+  
+  # Ordenar por la métrica de ranking
+  data <- data[order(data$metric, decreasing = TRUE), ]
+  
+  # Crear el vector nombrado para GSEA
+  gene_metric <- data$metric
+  names(gene_metric) <- rownames(data)
+  
+  # Ejecutar GSEA (ontología biológica por defecto)
+  gseGO_result <- gseGO(geneList = gene_metric,
+                        ont = "BP",
+                        OrgDb = org.Mm.eg.db,
+                        minGSSize = 50,
+                        maxGSSize = 500,
+                        eps = 1e-20,
+                        nPermSimple = 10000,
+                        pAdjustMethod = "BH",
+                        pvalueCutoff = 0.005,
+                        verbose = FALSE)
+  
+  # Simplificar GO (eliminar términos redundantes)
+  gseGO_result <- simplify(gseGO_result,
+                           cutoff = 0.7,
+                           by = "p.adjust",
+                           select_fun = min)
+  
+  # Hacer resultados legibles
+  gseGO_result <- setReadable(gseGO_result,
+                              OrgDb = org.Mm.eg.db,
+                              keyType = "ENTREZID")
+  
+  return(gseGO_result)
+}
+
+
+
+
+
+
+
+GSEA2 <- function(data) {
+ 
+
+  # Añadir el símbolo como columna
+  data$mgi_symbol <- rownames(data)
+  
+  # Mapear símbolos a Entrez IDs usando org.Mm.eg.db (más confiable que biomaRt)
+  entrez_ids <- mapIds(org.Mm.eg.db,
+                       keys = rownames(data),
+                       column = "ENTREZID",
+                       keytype = "SYMBOL",
+                       multiVals = "first")
+  
+  # Añadir la columna con Entrez al dataframe
+  data$entrezgene_id <- entrez_ids[rownames(data)]
+  
+  # Filtrar filas sin EntrezID
+  data <- data[!is.na(data$entrezgene_id), ]
+  
+  # Quitar genes duplicados (si algún símbolo mapeó a la misma ID)
+  data <- data[!duplicated(data$entrezgene_id), ]
+  
+  # Reasignar rownames por EntrezID
+  rownames(data) <- data$entrezgene_id
+  
+  # Reemplazar p_val == 0 por un valor muy pequeño para evitar -Inf
+  epsilon <- 1e-300
+  data$adj.P.Val[data$p_val_adj == 0] <- epsilon
+  
+  # Calcular la métrica de ranking
+  data$metric <- sign(data$avg_log2FC) 
+  
+  # Ordenar por la métrica de ranking
+  data <- data[order(data$metric, decreasing = TRUE), ]
+  
+  # Crear el vector nombrado para GSEA
+  gene_metric <- data$metric
+  names(gene_metric) <- rownames(data)
+  
+  # Ejecutar GSEA (ontología biológica por defecto)
+  gseGO_result <- gseGO(geneList = gene_metric,
+                        ont = "BP",
+                        OrgDb = org.Mm.eg.db,
+                        minGSSize = 50,
+                        maxGSSize = 500,
+                        eps = 1e-20,
+                        nPermSimple = 10000,
+                        pAdjustMethod = "BH",
+                        pvalueCutoff = 0.005,
+                        verbose = FALSE)
+  
+  # Simplificar GO (eliminar términos redundantes)
+  gseGO_result <- simplify(gseGO_result,
+                           cutoff = 0.9,
+                           by = "p.adjust",
+                           select_fun = min)
+  
+  # Hacer resultados legibles
+  gseGO_result <- setReadable(gseGO_result,
+                              OrgDb = org.Mm.eg.db,
+                              keyType = "ENTREZID")
+  
+  return(gseGO_result)
+}
+
+
+
+
+
+plot_gsea <- function(gsea_df, title = "GSEA Plot") {
+  gsea_df <- gsea_df %>%
+    mutate(
+      NES_sign = ifelse(NES > 0, "Positive", "Negative"),
+      NES_sign = factor(NES_sign, levels = c("Positive","Negative"))
+    ) %>%
+    dplyr::arrange(NES_sign, dplyr::desc(NES)) %>%   # usar dplyr:: explícito
+    mutate(Description = factor(Description, levels = rev(Description))) 
+
+  ggplot(gsea_df, aes(x = Description, y = NES, fill = NES_sign)) +
+    geom_col() +
+    scale_fill_manual(values = c("Positive" = "red", "Negative" = "blue")) +
+    coord_flip() +
+    labs(
+      x = "Pathway",
+      y = "Normalized Enrichment Score",
+      title = title
+    ) +
+    theme_classic() +
+    theme(
+      axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+      legend.position = "none"
+    )
+}
