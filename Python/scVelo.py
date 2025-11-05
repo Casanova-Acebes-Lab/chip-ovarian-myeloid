@@ -22,6 +22,7 @@ from scipy import io
 import numpy as np
 import os
 import subprocess
+import scvelo as scv
 
 
 # --- Directorios ---
@@ -118,21 +119,255 @@ adata.write(os.path.join(scvelo_outdir, "my_data.h5ad"))
 # Step 0: Constructing spliced and unspliced counts matrices
 # See Bash/Velocyto.sh for this step
 
-# Step 1: Load data
-
+# Step 1: merge loom files and integrate with existing adata
+# See Bash/merge.loom.sh for this step
 import scvelo as scv
 import scanpy as sc
-import cellrank as cr
+
+scv.set_figure_params(style='white', dpi=150)
+
+# ==========
+# LOAD DATA
+# ==========
+adata = sc.read_h5ad(f"{outdir}/scVelo/velocyto_loom_files/processed_h5ad/adata_with_velocity_layers_subsetted.h5ad")
+
+print("Genes totales antes del filtrado:", adata.n_vars)
+
+# ==========
+# 1) FILTRADO + NORMALIZACIÓN (pipeline recomendado)
+# ==========
+scv.pp.filter_and_normalize(
+    adata,
+    min_shared_counts=20,   # ← robusto, mantiene genes expresados en suficientes células
+    n_top_genes=2000        # ← selecciona las más informativas
+)
+
+# ==========
+# 2) PCA + Vecinos
+# ==========
+sc.pp.pca(adata, n_comps=30)
+sc.pp.neighbors(adata, n_neighbors=30, n_pcs=30)
+
+# ==========
+# 3) MOMENTS
+# ==========
+scv.pp.moments(adata, n_pcs=30, n_neighbors=30)
+
+# ==========
+# 4) VELOCITY + GRAPH
+# ==========
+scv.tl.velocity(adata, mode='stochastic')
+scv.tl.velocity_graph(adata)
+
+print("Genes tras filtrado:", adata.n_vars)
+
+# ==========
+# 5) VISUALIZACIÓN GLOBAL
+# ==========
+scv.pl.velocity_embedding_stream(
+    adata, basis='umap', color='Cluster',
+    legend_loc='right margin', save='velocity_stream_all.pdf'
+)
+
+scv.pl.velocity_embedding_grid(
+    adata, basis='umap', color='Cluster',
+    arrow_size=2.0, arrow_length=4.0,
+    legend_loc='right margin', save='velocity_grid_all.pdf'
+)
+
+# ==================================
+# WT
+
+# ==================================
+adata_WT = adata[adata.obs['group'] == 'WT'].copy()
+scv.tl.velocity_embedding(adata_WT, basis='umap')
+
+scv.pl.velocity_embedding_stream(
+    adata_WT, basis='umap', color='Cluster',
+    legend_loc='right margin', save='WT_velocity_stream.pdf'
+)
+
+scv.pl.velocity_embedding_grid(
+    adata_WT, basis='umap', color='Cluster',
+    arrow_size=2.0, arrow_length=4.0,
+    legend_loc='right margin', save='WT_velocity_grid.pdf'
+)
+
+# ==================================
+# KO
+# ==================================
+adata_KO = adata[adata.obs['group'] == 'KO'].copy()
+scv.tl.velocity_embedding(adata_KO, basis='umap')
+
+scv.pl.velocity_embedding_stream(
+    adata_KO, basis='umap', color='Cluster',
+    legend_loc='right margin', save='KO_velocity_stream.pdf'
+)
+
+scv.pl.velocity_embedding_grid(
+    adata_KO, basis='umap', color='Cluster',
+    arrow_size=2.0, arrow_length=4.0,
+    legend_loc='right margin', save='KO_velocity_grid.pdf'
+)
+
+
+
+
+
+
+###
 import numpy as np
+import scvelo as scv
+
+genes_to_plot = ["Trem1", "Ly6c2"]   # <-- Puedes agregar más genes aquí
+
+for gene in genes_to_plot:
+    print(f"\n--- Analizando gen: {gene} ---")
+
+    if gene not in adata_WT.var_names:
+        print(f"⚠️  {gene} NO está en adata_WT.var_names → se omite")
+        continue
+
+    idx = adata_WT.var_names.get_loc(gene)
+
+    total_spliced = np.sum(adata_WT.layers["spliced"][:, idx].data)
+    total_unspliced = np.sum(adata_WT.layers["unspliced"][:, idx].data)
+
+    print(f"  Spliced total:     {total_spliced:.1f}")
+    print(f"  Unspliced total:   {total_unspliced:.1f}")
+
+    # ✅ Si no hay señal → no intentamos plotear para evitar errores
+    if total_spliced < 5 and total_unspliced < 5:
+        print(f"⚠️  {gene} casi NO se expresa → no se generará plot.")
+        continue
+
+    # ✅ Sí tiene señal → Generamos el plot
+    scv.pl.velocity(
+        adata_WT,
+        var_names=[gene],
+        color='Cluster',
+        legend_loc='right margin',
+        title=f"RNA Velocity of {gene} (WT)",
+        save=f"velocity_{gene}_WT.pdf"
+    )
+
+print("\n✅ Listo.")
+
+
+
+
+scv.set_figure_params(
+    style='white',
+    dpi=150,
+    frameon=True,             # ← importante para fondo blanco
+    facecolor='white'         # ← fuerza fondo blanco
+)
+
+
+
+scv.pl.velocity(
+    adata_WT,
+    var_names=['Ifi206'],
+    color='Cluster',
+    dpi=150,
+    save='Ifi206_WT_velocity_WHITE.png'
+)
+
+
+
+
+### Part 3: Downstream analysis
+
+
 import pandas as pd
-import anndata as ad
 
-scv.settings.verbosity = 3
-scv.settings.set_figure_params('scvelo', facecolor='white', dpi=100, frameon=False)
-cr.settings.verbosity = 2
+df = pd.DataFrame(adata_WT.uns['rank_velocity_genes']['names'])
+
+# Mostrar tabla completa por pantalla
+print(df)
 
 
-adata = sc.read_h5ad(f'{outdir}/scVelo/my_data.h5ad')
+scv.tl.velocity_confidence(adata_WT)
+keys = 'velocity_length', 'velocity_confidence'
+scv.pl.scatter(adata_WT, c=keys, cmap='coolwarm', perc=[5, 95],
+save='WT_velocity.lenght.confidence.pdf')
+
+
+scv.pl.velocity_graph(adata_WT, threshold=.1, color='Cluster',
+save='WT_velocity.graph.pdf')
+
+
+
+
+scv.tl.velocity_pseudotime(adata_WT)
+scv.pl.scatter(adata_WT, color='velocity_pseudotime', cmap='gnuplot',
+save='WT_velocity.pseudotime.png')
+
+
+
+scv.tl.velocity_pseudotime(adata_KO)
+scv.pl.scatter(adata_KO, color='velocity_pseudotime', cmap='gnuplot',
+save='KO_velocity.pseudotime.png')
+
+
+gene = "Trem1"
+import numpy as np
+
+if gene not in adata_WT.var_names:
+    print("El gen NO está en adata_WT.var_names")
+else:
+    idx = adata_WT.var_names.get_loc(gene)
+
+    total_X = np.sum(adata_WT.X[:, idx].data)
+    total_spliced = np.sum(adata_WT.layers["spliced"][:, idx].data) if "spliced" in adata_WT.layers else None
+    total_unspliced = np.sum(adata_WT.layers["unspliced"][:, idx].data) if "unspliced" in adata_WT.layers else None
+
+    print(f"\nGen: {gene}")
+    print("  Total X:", total_X)
+    print("  Total spliced:", total_spliced)
+    print("  Total unspliced:", total_unspliced)
+
+
+
+
+
+
+gene = "Trem1"
+if gene in adata_WT.var_names:
+    idx = adata_WT.var_names.get_loc(gene)
+    total_X = float(adata_WT.X[:, idx].sum())
+    total_spliced = float(adata_WT.layers["spliced"][:, idx].sum())
+    total_unspliced = float(adata_WT.layers["unspliced"][:, idx].sum())
+    print("Total counts in X:", total_X)
+    print("Total spliced:", total_spliced)
+    print("Total unspliced:", total_unspliced)
+else:
+    print("El gen NO está en adata_WT.var_names")
+
+
+
+
+
+
+import numpy as np
+
+for layer in ['spliced', 'unspliced', 'ambiguous']:
+    if layer in adata.layers:
+        X = adata.layers[layer]
+        # toma una muestra pequeña de 1000 células (o menos si hay menos)
+        n = min(1000, X.shape[0])
+        rows = np.random.choice(X.shape[0], n, replace=False)
+
+        # suma solo esas filas
+        try:
+            partial_sum = X[rows, :].sum()
+        except Exception:
+            partial_sum = np.array(X[rows, :].sum()).sum()
+
+        mean_per_cell = partial_sum / n
+        print(f"{layer}: shape={X.shape}, mean counts/cell≈{mean_per_cell:.2f}")
+    else:
+        print(f"{layer}: not found")
 
 
 

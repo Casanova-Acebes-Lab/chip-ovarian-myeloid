@@ -605,15 +605,187 @@ data <- readRDS(paste0(rsdir,"objects/data.Clusterized.rds"))
 
 
 
-
 macros_cells <- rownames(data@meta.data)[
   grepl("Mac|Monocytes", data@meta.data$Cluster)
 ]
 macros <- subset(data, cells = macros_cells)
 
-saveRDS(macros, paste0(rsdir,"objects/data.macrophages.Clusterized.rds"))
+
+data <- SetIdent(macros, value = "Cluster")
+pdf(paste0(outdir,"/QC/Clustering.Macros.pdf"), width=14, height=8)
+DimPlot_scCustom(macros, reduction = "umap", pt.size = 0.5, label=FALSE) +
+  scale_color_manual(values = nora.colors) 
+
+dev.off()
+
+
+# Extraer las coordenadas de UMAP
+umap_coords <- Embeddings(macros, "umap")
+
+# Ver las primeras filas para entender cómo están
+head(umap_coords)
+
+# Límites de la zona 1
+x_min1 <- -15
+x_max1 <- -10
+y_min1 <- -5
+y_max1 <- -0
+
+
+celdas_a_conservar <- rownames(umap_coords)[
+  !(umap_coords[,1] >= x_min1 & umap_coords[,1] <= x_max1 &
+    umap_coords[,2] >= y_min1 & umap_coords[,2] <= y_max1)
+]
+
+macros_filtrado <- subset(macros, cells = celdas_a_conservar)
+
+
+data <- SetIdent(macros_filtrado, value = "Cluster")
+pdf(paste0(outdir,"/QC/Clustering.Macros2.pdf"), width=14, height=8)
+DimPlot_scCustom(macros_filtrado, reduction = "umap", pt.size = 0.5, label=FALSE) +
+  scale_color_manual(values = nora.colors) 
+
+dev.off()
+
+
+
+
+# Extraer coordenadas UMAP
+umap_coords <- Embeddings(macros_filtrado, "umap")  # usa el objeto filtrado actual
+
+# Seleccionar células a conservar: fuera de la nueva zona (x > 5)
+celdas_a_conservar <- rownames(umap_coords)[
+  umap_coords[,1] <= 5
+]
+
+# Crear un nuevo objeto Seurat filtrado
+macros_filtrado <- subset(macros_filtrado, cells = celdas_a_conservar)
+
+# Ajustar identidades si es necesario
+macros_filtrado <- SetIdent(macros_filtrado, value = "Cluster")
+
+# Graficar y guardar en PDF
+pdf(paste0(outdir, "/QC/Clustering.Macros3.pdf"), width=14, height=8)
+DimPlot_scCustom(macros_filtrado, reduction = "umap", pt.size = 0.5, label = FALSE) +
+  scale_color_manual(values = nora.colors)
+dev.off()
+
+
+
+
+# Extraer coordenadas UMAP
+umap_coords <- Embeddings(macros_filtrado, "umap")  # usa el objeto filtrado actual
+
+# Seleccionar células a conservar: fuera de la nueva zona
+celdas_a_conservar <- rownames(umap_coords)[
+  !(umap_coords[,1] > 2.5 & umap_coords[,2] > 2)
+]
+
+# Crear un nuevo objeto Seurat filtrado
+macros_filtrado <- subset(macros_filtrado, cells = celdas_a_conservar)
+
+# Ajustar identidades si es necesario
+macros_filtrado <- SetIdent(macros_filtrado, value = "Cluster")
+
+# Graficar y guardar en PDF
+pdf(paste0(outdir, "/QC/Clustering.Macros4.pdf"), width=14, height=8)
+DimPlot_scCustom(macros_filtrado, reduction = "umap", pt.size = 0.5, label = FALSE) +
+  scale_color_manual(values = nora.colors)
+dev.off()
+
+
+# Extraer coordenadas UMAP
+umap_coords <- Embeddings(macros_filtrado, "umap")  # usa el objeto filtrado actual
+
+# Seleccionar células a conservar: fuera de la nueva zona
+celdas_a_conservar <- rownames(umap_coords)[
+  !(umap_coords[,1] > 2.5 & umap_coords[,2] < -6)
+]
+
+# Crear un nuevo objeto Seurat filtrado
+macros_filtrado <- subset(macros_filtrado, cells = celdas_a_conservar)
+
+# Ajustar identidades si es necesario
+macros_filtrado <- SetIdent(macros_filtrado, value = "Cluster")
+
+# Graficar y guardar en PDF
+pdf(paste0(outdir, "/QC/Clustering.Macros5.pdf"), width=14, height=8)
+DimPlot_scCustom(macros_filtrado, reduction = "umap", pt.size = 0.5, label = FALSE) +
+  scale_color_manual(values = nora.colors)
+dev.off()
+
+
+
+
+library(ggplot2)
+library(Seurat)
+
+# Extraer coordenadas
+umap_coords <- Embeddings(macros_filtrado, "umap")
+umap_df <- as.data.frame(umap_coords)
+umap_df$Cluster <- Idents(macros_filtrado)
+
+# DimPlot estilo ggplot con cuadrícula
+pdf(paste0(outdir, "/QC/Clustering.Macros5.pdf"), width=14, height=8)
+ggplot(umap_df, aes(x = umap_1, y = umap_2, color = Cluster)) +
+  geom_point(size = 0.5) +
+  theme_bw() +
+  geom_hline(yintercept = seq(floor(min(umap_df$umap_2, na.rm = TRUE)), 
+                              ceiling(max(umap_df$umap_2, na.rm = TRUE)), by = 1), 
+             color = "gray80", linetype = "dashed") +
+  geom_vline(xintercept = seq(floor(min(umap_df$umap_1, na.rm = TRUE)), 
+                              ceiling(max(umap_df$umap_1, na.rm = TRUE)), by = 1), 
+             color = "gray80", linetype = "dashed")
+
+
+dev.off()
+
+
+
+# Extraer coordenadas UMAP
+umap_coords <- Embeddings(macros_filtrado, "umap")
+
+# Extraer identidades actuales
+clusters <- Idents(macros_filtrado)
+
+# Identificar las células en la zona definida
+zona_a_eliminar <- rownames(umap_coords)[
+  umap_coords[,1] >= 1 & umap_coords[,1] <= 3 &
+  umap_coords[,2] >= 2 & umap_coords[,2] <= 5 &
+  clusters != "Ly6c|Ms4ac Monocytes"
+]
+
+# Seleccionar las células a conservar (todas las demás)
+celdas_a_conservar <- setdiff(rownames(umap_coords), zona_a_eliminar)
+
+# Crear un nuevo objeto Seurat filtrado
+macros_filtrado <- subset(macros_filtrado, cells = celdas_a_conservar)
+
+# Ajustar identidades si es necesario
+macros_filtrado <- SetIdent(macros_filtrado, value = "Cluster")
+
+# Graficar y guardar en PDF
+pdf(paste0(outdir, "/QC/Clustering.Macros7.pdf"), width = 14, height = 8)
+DimPlot_scCustom(macros_filtrado, reduction = "umap", pt.size = 0.5, label = FALSE) +
+  scale_color_manual(values = nora.colors)
+dev.off()
+
+
+
+
+saveRDS(macros_filtrado, paste0(rsdir,"objects/data.macrophages.Clusterized.rds"))
 macros <- readRDS(paste0(rsdir,"objects/data.macrophages.Clusterized.rds"))
 
+
+
+
+
+data <- SetIdent(macros, value = "Cluster")
+pdf(paste0(outdir,"/QC/Clustering.Macro8.pdf"), width=14, height=8)
+DimPlot_scCustom(macros, reduction = "umap", pt.size = 0.5, label=FALSE) +
+  scale_color_manual(values = nora.colors) 
+
+dev.off()
 
 
 ## Subsetting macros for Velocity
