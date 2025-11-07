@@ -391,8 +391,9 @@ dev.off()
 
 
 
-pdf(paste0(outdir,"/QC/Umap_Markers.IFN.pdf"), width=18, height=14)
-FeaturePlot_scCustom(data, features= c("Ifit3","Ifit1", "Ifit2", "Stat2", "Oas2","Gbp2", "Irf7", "Irf9"), reduction = "umap")
+pdf(paste0(outdir,"/QC/Umap_Markers.IFN.pdf"), width=14, height=24)
+FeaturePlot_scCustom(data, features= c("Ifit3","Ifit1", "Ifit2", "Stat2", "Oas2", "Irf7"), reduction = "umap",
+split.by="group")
 dev.off()
 
 
@@ -541,9 +542,9 @@ data$Cluster <- NA
 data$Cluster[data$seurat_clusters == 0] <- "Fn1|Vegfa Mac"
 data$Cluster[data$seurat_clusters == 1] <- "Trem1|Ptgs2|Plaur|Celc4e Mac"
 data$Cluster[data$seurat_clusters == 2] <- "Mrc1|C1qc|Cbr2|Gas6 Mac"
-data$Cluster[data$seurat_clusters == 3] <- "Ciita|Siglec Mac"
+data$Cluster[data$seurat_clusters == 3] <- "MHCII|Siglec Mac"
 data$Cluster[data$seurat_clusters == 4] <- "Cd8 T cells"
-data$Cluster[data$seurat_clusters == 5] <- "Ciita|Ccl12 Mac"
+data$Cluster[data$seurat_clusters == 5] <- "MHCII|Ccl12 Mac"
 data$Cluster[data$seurat_clusters == 6] <- "Ly6c|Ms4ac Monocytes"
 data$Cluster[data$seurat_clusters == 7] <- "IFN Mac"
 data$Cluster[data$seurat_clusters == 8] <- "Cd4 T cells"
@@ -575,8 +576,8 @@ cluster_order <- c(
   "Marco+ Mac",
   "IFN Mac",
   "Fn1|Vegfa Mac",
-  "Ciita|Siglec Mac",
-  "Ciita|Ccl12 Mac",
+  "MHCII|Siglec Mac",
+  "MHCII|Ccl12 Mac",
 
   # Células presentadoras e innatas
   "DCs",
@@ -594,7 +595,7 @@ cluster_order <- c(
 )
 
 
-# Suponiendo que la columna se llama "Cluster" (ajusta si se llama distinto)
+
 data$Cluster <- factor(data$Cluster, levels = cluster_order)
 
 
@@ -604,18 +605,62 @@ saveRDS(data, paste0(rsdir,"objects/data.Clusterized.rds"))
 data <- readRDS(paste0(rsdir,"objects/data.Clusterized.rds"))
 
 
+### Adding monocytes subclustering
 
-macros_cells <- rownames(data@meta.data)[
-  grepl("Mac|Monocytes", data@meta.data$Cluster)
-]
+mon.annotation <- read.csv(paste0(outdir,"/Subclustering.Monocytes/subclustering_monocytes_annotations.csv"))
+
+# Asegura que el índice son los barcodes
+rownames(mon.annotation) <- mon.annotation$barcode
+mon.annotation$barcode <- NULL
+
+# Agregar metadata al objeto global
+data <- AddMetaData(data, mon.annotation)
+
+
+
+# Crear la nueva columna como character para que permita nuevos valores
+data$Clustering.Round2 <- as.character(data$Cluster)
+
+# Reasignar según tus subclusters refinados
+data$Clustering.Round2[data$Subclustering.Mon == "Ly6cHi Monocytes"] <- "Ly6cHi Monocytes"
+data$Clustering.Round2[data$Subclustering.Mon == "Ly6cLo Monocytes"] <- "Ly6cLo Monocytes"
+data$Clustering.Round2[data$Subclustering.Mon == "Early IFN-TAMs"] <- "Early IFN|MHCII-TAMs"
+
+# Convertimos de vuelta a factor, ya con todos los niveles presentes
+data$Clustering.Round2 <- factor(data$Clustering.Round2)
+
+
+#####
+
+
+### Subseting macros for Trayectory analysis
+
+
+
+macros_cells <- WhichCells(
+  data,
+  expression = Clustering.Round2 %in% c(
+    "Ly6cHi Monocytes", "Ly6cLo Monocytes", "Early IFN|MHCII-TAMs",
+    "Trem1|Ptgs2|Plaur|Celc4e Mac",
+    "Mrc1|C1qc|Cbr2|Gas6 Mac",
+    "Arg1|Spp1|Mmp12|Mmp19|Il1a Mac",
+    "Npr2|Actn1 Mac",
+    "Mmp9|Ctsk Mac",
+    "IFN Mac",
+    "Fn1|Vegfa Mac",
+    "MHCII|Siglec Mac",
+    "MHCII|Ccl12 Mac"
+  )
+)
+
 macros <- subset(data, cells = macros_cells)
 
 
-data <- SetIdent(macros, value = "Cluster")
-pdf(paste0(outdir,"/QC/Clustering.Macros.pdf"), width=14, height=8)
-DimPlot_scCustom(macros, reduction = "umap", pt.size = 0.5, label=FALSE) +
-  scale_color_manual(values = nora.colors) 
+macros <- SetIdent(macros, value = "Clustering.Round2")
 
+pdf(paste0(outdir,"/QC/Clustering.Macros.pdf"), width=14, height=8)
+DimPlot_scCustom(macros, reduction = "umap", group.by = "Clustering.Round2", pt.size = 0.5, label=FALSE) +
+  scale_color_manual(values = nora.colors)
 dev.off()
 
 
@@ -640,9 +685,9 @@ celdas_a_conservar <- rownames(umap_coords)[
 macros_filtrado <- subset(macros, cells = celdas_a_conservar)
 
 
-data <- SetIdent(macros_filtrado, value = "Cluster")
+data <- SetIdent(macros_filtrado, value = "Clustering.Round2")
 pdf(paste0(outdir,"/QC/Clustering.Macros2.pdf"), width=14, height=8)
-DimPlot_scCustom(macros_filtrado, reduction = "umap", pt.size = 0.5, label=FALSE) +
+DimPlot_scCustom(macros_filtrado, group.by = "Clustering.Round2",reduction = "umap", pt.size = 0.5, label=FALSE) +
   scale_color_manual(values = nora.colors) 
 
 dev.off()
@@ -662,11 +707,11 @@ celdas_a_conservar <- rownames(umap_coords)[
 macros_filtrado <- subset(macros_filtrado, cells = celdas_a_conservar)
 
 # Ajustar identidades si es necesario
-macros_filtrado <- SetIdent(macros_filtrado, value = "Cluster")
+macros_filtrado <- SetIdent(macros_filtrado, value = "Clustering.Round2")
 
 # Graficar y guardar en PDF
 pdf(paste0(outdir, "/QC/Clustering.Macros3.pdf"), width=14, height=8)
-DimPlot_scCustom(macros_filtrado, reduction = "umap", pt.size = 0.5, label = FALSE) +
+DimPlot_scCustom(macros_filtrado, group.by = "Clustering.Round2",reduction = "umap", pt.size = 0.5, label = FALSE) +
   scale_color_manual(values = nora.colors)
 dev.off()
 
@@ -685,7 +730,7 @@ celdas_a_conservar <- rownames(umap_coords)[
 macros_filtrado <- subset(macros_filtrado, cells = celdas_a_conservar)
 
 # Ajustar identidades si es necesario
-macros_filtrado <- SetIdent(macros_filtrado, value = "Cluster")
+macros_filtrado <- SetIdent(macros_filtrado, value = "Clustering.Round2")
 
 # Graficar y guardar en PDF
 pdf(paste0(outdir, "/QC/Clustering.Macros4.pdf"), width=14, height=8)
@@ -706,7 +751,7 @@ celdas_a_conservar <- rownames(umap_coords)[
 macros_filtrado <- subset(macros_filtrado, cells = celdas_a_conservar)
 
 # Ajustar identidades si es necesario
-macros_filtrado <- SetIdent(macros_filtrado, value = "Cluster")
+macros_filtrado <- SetIdent(macros_filtrado, value = "Clustering.Round2")
 
 # Graficar y guardar en PDF
 pdf(paste0(outdir, "/QC/Clustering.Macros5.pdf"), width=14, height=8)
@@ -752,8 +797,9 @@ clusters <- Idents(macros_filtrado)
 zona_a_eliminar <- rownames(umap_coords)[
   umap_coords[,1] >= 1 & umap_coords[,1] <= 3 &
   umap_coords[,2] >= 2 & umap_coords[,2] <= 5 &
-  clusters != "Ly6c|Ms4ac Monocytes"
+  !(clusters %in% c("Ly6cHi Monocytes", "Ly6cLo Monocytes", "Early IFN|MHCII-TAMs", "IFN Mac"))
 ]
+
 
 # Seleccionar las células a conservar (todas las demás)
 celdas_a_conservar <- setdiff(rownames(umap_coords), zona_a_eliminar)
@@ -762,7 +808,7 @@ celdas_a_conservar <- setdiff(rownames(umap_coords), zona_a_eliminar)
 macros_filtrado <- subset(macros_filtrado, cells = celdas_a_conservar)
 
 # Ajustar identidades si es necesario
-macros_filtrado <- SetIdent(macros_filtrado, value = "Cluster")
+macros_filtrado <- SetIdent(macros_filtrado, value = "Clustering.Round2")
 
 # Graficar y guardar en PDF
 pdf(paste0(outdir, "/QC/Clustering.Macros7.pdf"), width = 14, height = 8)
@@ -777,10 +823,14 @@ saveRDS(macros_filtrado, paste0(rsdir,"objects/data.macrophages.Clusterized.rds"
 macros <- readRDS(paste0(rsdir,"objects/data.macrophages.Clusterized.rds"))
 
 
+saveRDS(data, paste0(rsdir,"objects/data.Clusterized.Round2.rds"))
+data <- readRDS(paste0(rsdir,"objects/data.Clusterized.Round2.rds"))
 
 
 
-data <- SetIdent(macros, value = "Cluster")
+
+
+data <- SetIdent(macros, value = "Clustering.Round2")
 pdf(paste0(outdir,"/QC/Clustering.Macro8.pdf"), width=14, height=8)
 DimPlot_scCustom(macros, reduction = "umap", pt.size = 0.5, label=FALSE) +
   scale_color_manual(values = nora.colors) 
@@ -790,6 +840,8 @@ dev.off()
 
 ## Subsetting macros for Velocity
 
+
+macros <- macros_filtrado
 
 macros$barcode <- colnames(macros)
 macros$UMAP_1 <- macros@reductions$umap@cell.embeddings[,1]
@@ -818,35 +870,42 @@ write.table(
 
 
 nora.colors <- c(
-  "Ly6c|Ms4ac Monocytes"         = "#FF3B30",   # rojo coral vivo
-  "Trem1|Ptgs2|Plaur|Celc4e Mac" = "#EE7942",   # naranja vivo
-  "Mrc1|C1qc|Cbr2|Gas6 Mac"      = "#FFD92F",   # amarillo brillante
-  "Arg1|Spp1|Mmp12|Mmp19|Il1a Mac" = "#4DAF4A", # verde intenso
-  "Npr2|Actn1 Mac"               = "#A6D854",   # verde lima
-  "Cd8 T cells"                  = "#00BFC4",   # turquesa
-  "Cd4 T cells"                  = "#FF69B4",   # rosa fuerte
-  "Neutrophils"                  = "#4876FF",   # azul fuerte
-  "DCs"                           = "#87CEEB",   # azul claro
-  "NK"                            = "#AB82FF",   # violeta oscuro
-  "Tgd"                           = "#D9B3FF",   # lila pastel
-  "Mastocytes"                    = "#3CB371",   # verde saturado
-  "B cells"                       = "#DC143C",   # rojo intenso
-  "Cd8 Effector"                  = "#A52A2A",   # rojo ladrillo
-  "Marco+ Mac"                    = "#1E3A8A",   # azul intermedio
-  "Slamf Monocytes"             = "#66B2FF",   # azul medio claro
-  "Mmp9|Ctsk Mac"                  = "#00723F",   # verde botella
-  "IFN Mac"                        = "#C080FF",   # morado claro
-  "Fn1|Vegfa Mac"                  = "#FFA500",   # naranja estándar
-  "Ciita|Siglec Mac"               = "#1E90FF",   # azul cobalto vivo
-  "Ciita|Ccl12 Mac"                = "#4682B4",   # azul acero
-  "Activated B cells"              = "#FF1493"    # fucsia intenso
+  # --- MONOCITOS & TAMs (ROJOS) ---
+  "Ly6cHi Monocytes"     = "#FF0000",  # Rojo inflamatorio puro
+  "Ly6cLo Monocytes"     = "#FF6A6A",  # Rojo salmón transición
+  "Early IFN|MHCII-TAMs"       = "#B22222",  # Rojo vino (pre-TAM IFN)
+  "Trem1|Ptgs2|Plaur|Celc4e Mac" = "#EE7942",   # naranja vivo (inflam. activados)
+  "Mrc1|C1qc|Cbr2|Gas6 Mac"      = "#FFD92F",   # amarillo brillante (TAM residentes)
+  "Arg1|Spp1|Mmp12|Mmp19|Il1a Mac" = "#4DAF4A", # verde TAM reparadores
+  "Npr2|Actn1 Mac"       = "#A6D854",   # verde lima (TAM estructurales)
+  "Marco+ Mac"           = "#1E3A8A",   # azul intermedio (scavenger)
+  "Mmp9|Ctsk Mac"        = "#00723F",   # verde botella (remodelado matriz)
+  "IFN Mac"              = "#C080FF",   # morado claro (TAM interferón maduros)
+  "Fn1|Vegfa Mac"        = "#FFA500",   # naranja angiogénico
+  "MHCII|Siglec Mac"     = "#1E90FF",   # azul cobalto (antigen presenting)
+  "MHCII|Ccl12 Mac"      = "#4682B4",   # azul acero
+
+  # --- CÉLULAS LINFOIDES ---
+  "Cd8 T cells"          = "#00BFC4",   # turquesa
+  "Cd4 T cells"          = "#FF69B4",   # rosa fuerte
+  "Cd8 Effector"         = "#A52A2A",   # rojo ladrillo
+  "Tgd"                  = "#D9B3FF",   # lila pastel
+  "NK"                   = "#AB82FF",   # violeta oscuro
+  "Activated B cells"    = "#FF1493",   # fucsia intenso
+  "B cells"              = "#DC143C",   # rojo intenso
+
+  # --- INNATAS ---
+  "Neutrophils"          = "#4876FF",   # azul fuerte
+  "DCs"                  = "#87CEEB",   # azul claro
+  "Mastocytes"           = "#3CB371"    # verde saturado
 )
 
 
 
-data$Cluster <- factor(data$Cluster, levels = names(nora.colors))
 
-data <- SetIdent(data, value = "Cluster")
+data$Cluster <- factor(data$Clustering.Round2, levels = names(nora.colors))
+
+data <- SetIdent(data, value = "Clustering.Round2")
 pdf(paste0(outdir,"/QC/Clustering1.pdf"), width=12, height=8)
 DimPlot_scCustom(data, reduction = "umap", label = TRUE, repel = TRUE, pt.size = 0.5) +
   scale_color_manual(values = nora.colors) +
@@ -856,7 +915,7 @@ dev.off()
 
 
 
-data <- SetIdent(data, value = "Cluster")
+data <- SetIdent(data, value = "Clustering.Round2")
 pdf(paste0(outdir,"/QC/Clustering2.pdf"), width=14, height=8)
 DimPlot_scCustom(data, reduction = "umap", pt.size = 0.5, label=FALSE) +
   scale_color_manual(values = nora.colors) 
@@ -974,7 +1033,7 @@ FeaturePlot_scCustom(data, features = "Il1b", split.by="group")
 
 
 # Establecer identidades con Seurat >=4
-Idents(data) <- "Cluster"
+Idents(data) <- "Clustering.Round2"
 
 # Encontrar marcadores
 markers <- FindAllMarkers(
@@ -1032,7 +1091,7 @@ table(data_downsampled$tag)
 
 
 
-data <- SetIdent(data, value = "Cluster")
+data <- SetIdent(data, value = "Clustering.Round2")
 pdf(paste0(outdir,"/QC/Umap.tag.Downsampled.8k.pdf"), width=24, height=12)
 DimPlot(data_downsampled, reduction = "umap", split.by = "tag", ncol=4, raster = FALSE,
 pt.size = 0.6) +  scale_color_manual(values = nora.colors)     
@@ -1089,17 +1148,16 @@ library(dplyr)
 
 # Tu lista de macro-clusters
 macro_clusters <- c(
-  "Ly6c|Ms4ac Monocytes",
-  "Trem1|Ptgs2|Plaur|Celc4e Mac",
-  "Mrc1|C1qc|Cbr2|Gas6 Mac",
-  "Arg1|Spp1|Mmp12|Mmp19|Il1a Mac",
-  "Npr2|Actn1 Mac",
-  "Slamf Monocytes",
-  "Mmp9|Ctsk Mac",
-  "IFN Mac",
-  "Fn1|Vegfa Mac",
-  "Ciita|Siglec Mac",
-  "Ciita|Ccl12 Mac",
+  "Ly6cHi Monocytes", "Ly6cLo Monocytes", "Early IFN|MHCII-TAMs",
+    "Trem1|Ptgs2|Plaur|Celc4e Mac",
+    "Mrc1|C1qc|Cbr2|Gas6 Mac",
+    "Arg1|Spp1|Mmp12|Mmp19|Il1a Mac",
+    "Npr2|Actn1 Mac",
+    "Mmp9|Ctsk Mac",
+    "IFN Mac",
+    "Fn1|Vegfa Mac",
+    "MHCII|Siglec Mac",
+    "MHCII|Ccl12 Mac"
   "Neutrophils"
 )
 

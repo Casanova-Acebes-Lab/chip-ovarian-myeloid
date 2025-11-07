@@ -53,32 +53,38 @@ adata.obsm['X_umap'] = np.vstack((adata.obs['UMAP_1'], adata.obs['UMAP_2'])).T
 
 # --- Paleta de R como diccionario ---
 nora_colors = {
-    "Ly6c|Ms4ac Monocytes": "#FF3B30",
-    "Trem1|Ptgs2|Plaur|Celc4e Mac": "#EE7942",
-    "Mrc1|C1qc|Cbr2|Gas6 Mac": "#FFD92F",
-    "Arg1|Spp1|Mmp12|Mmp19|Il1a Mac": "#4DAF4A",
-    "Npr2|Actn1 Mac": "#A6D854",
-    "Cd8 T cells": "#00BFC4",
-    "Cd4 T cells": "#FF69B4",
-    "Neutrophils": "#4876FF",
-    "DCs": "#87CEEB",
-    "NK": "#AB82FF",
-    "Tgd": "#D9B3FF",
-    "Mastocytes": "#3CB371",
-    "B cells": "#DC143C",
-    "Cd8 Effector": "#A52A2A",
-    "Marco+ Mac": "#1E3A8A",
-    "Slamf Monocytes": "#66B2FF",
-    "Mmp9|Ctsk Mac": "#00723F",
-    "IFN Mac": "#C080FF",
-    "Fn1|Vegfa Mac": "#FFA500",
-    "Ciita|Siglec Mac": "#1E90FF",
-    "Ciita|Ccl12 Mac": "#4682B4",
-    "Activated B cells": "#FF1493"
+    # --- MONOCITOS & TAMs (ROJOS) ---
+  "Ly6cHi Monocytes"     = "#FF0000",  # Rojo inflamatorio puro
+  "Ly6cLo Monocytes"     = "#FF6A6A",  # Rojo salmón transición
+  "Early IFN|MHCII-TAMs"       = "#B22222",  # Rojo vino (pre-TAM IFN)
+  "Trem1|Ptgs2|Plaur|Celc4e Mac" = "#EE7942",   # naranja vivo (inflam. activados)
+  "Mrc1|C1qc|Cbr2|Gas6 Mac"      = "#FFD92F",   # amarillo brillante (TAM residentes)
+  "Arg1|Spp1|Mmp12|Mmp19|Il1a Mac" = "#4DAF4A", # verde TAM reparadores
+  "Npr2|Actn1 Mac"       = "#A6D854",   # verde lima (TAM estructurales)
+  "Marco+ Mac"           = "#1E3A8A",   # azul intermedio (scavenger)
+  "Mmp9|Ctsk Mac"        = "#00723F",   # verde botella (remodelado matriz)
+  "IFN Mac"              = "#C080FF",   # morado claro (TAM interferón maduros)
+  "Fn1|Vegfa Mac"        = "#FFA500",   # naranja angiogénico
+  "MHCII|Siglec Mac"     = "#1E90FF",   # azul cobalto (antigen presenting)
+  "MHCII|Ccl12 Mac"      = "#4682B4",   # azul acero
+
+  # --- CÉLULAS LINFOIDES ---
+  "Cd8 T cells"          = "#00BFC4",   # turquesa
+  "Cd4 T cells"          = "#FF69B4",   # rosa fuerte
+  "Cd8 Effector"         = "#A52A2A",   # rojo ladrillo
+  "Tgd"                  = "#D9B3FF",   # lila pastel
+  "NK"                   = "#AB82FF",   # violeta oscuro
+  "Activated B cells"    = "#FF1493",   # fucsia intenso
+  "B cells"              = "#DC143C",   # rojo intenso
+
+  # --- INNATAS ---
+  "Neutrophils"          = "#4876FF",   # azul fuerte
+  "DCs"                  = "#87CEEB",   # azul claro
+  "Mastocytes"           = "#3CB371"    # verde saturado
 }
 
 # --- Columna de interés ---
-col = 'Cluster'
+col = 'Clustering.Round2'
 
 # --- Filtrar solo categorías presentes en tu subset ---
 cats_present = [cat for cat in nora_colors.keys() if cat in adata.obs[col].unique()]
@@ -215,47 +221,6 @@ scv.pl.velocity_embedding_grid(
 
 
 
-###
-import numpy as np
-import scvelo as scv
-
-genes_to_plot = ["Trem1", "Ly6c2"]   # <-- Puedes agregar más genes aquí
-
-for gene in genes_to_plot:
-    print(f"\n--- Analizando gen: {gene} ---")
-
-    if gene not in adata_WT.var_names:
-        print(f"⚠️  {gene} NO está en adata_WT.var_names → se omite")
-        continue
-
-    idx = adata_WT.var_names.get_loc(gene)
-
-    total_spliced = np.sum(adata_WT.layers["spliced"][:, idx].data)
-    total_unspliced = np.sum(adata_WT.layers["unspliced"][:, idx].data)
-
-    print(f"  Spliced total:     {total_spliced:.1f}")
-    print(f"  Unspliced total:   {total_unspliced:.1f}")
-
-    # ✅ Si no hay señal → no intentamos plotear para evitar errores
-    if total_spliced < 5 and total_unspliced < 5:
-        print(f"⚠️  {gene} casi NO se expresa → no se generará plot.")
-        continue
-
-    # ✅ Sí tiene señal → Generamos el plot
-    scv.pl.velocity(
-        adata_WT,
-        var_names=[gene],
-        color='Cluster',
-        legend_loc='right margin',
-        title=f"RNA Velocity of {gene} (WT)",
-        save=f"velocity_{gene}_WT.pdf"
-    )
-
-print("\n✅ Listo.")
-
-
-
-
 scv.set_figure_params(
     style='white',
     dpi=150,
@@ -308,6 +273,148 @@ save='WT_velocity.pseudotime.png')
 scv.tl.velocity_pseudotime(adata_KO)
 scv.pl.scatter(adata_KO, color='velocity_pseudotime', cmap='gnuplot',
 save='KO_velocity.pseudotime.png')
+
+
+
+
+import scvelo as scv
+
+# 1) Completely remove old graph info
+for key in ["neighbors", "paga"]:
+    if key in adata_WT.uns:
+        del adata_WT.uns[key]
+
+for key in ["distances", "connectivities"]:
+    if key in adata_WT.obsp:
+        del adata_WT.obsp[key]
+
+# 2) Recompute PCA if missing (won't overwrite existing X_umap or clustering)
+scv.pp.filter_and_normalize(adata_WT)
+scv.pp.pca(adata_WT)
+
+# 3) ***REBUILD NEIGHBOR GRAPH FOR VELOCITY***
+scv.pp.moments(adata_WT, n_pcs=30, n_neighbors=30)
+
+# 4) Recompute velocities
+scv.tl.velocity(adata_WT, mode="stochastic")
+scv.tl.velocity_graph(adata_WT)
+
+# 5) Now PAGA will run successfully
+import scanpy as sc
+sc.tl.paga(adata_WT, groups="Cluster")
+
+
+
+
+
+
+scv.pl.paga(adata_WT, basis='umap', size=50, alpha=.1,
+             min_edge_width=2, node_size_scale=1.5,
+             save='wt_velocity.graph.png')
+
+
+scv.pl.paga(adata_WT, basis='umap',
+             size=50, alpha=0.1,
+             min_edge_width=2,
+             node_size_scale=1.5,
+             save='wt_paga.pdf')
+
+
+
+
+
+
+
+import scvelo as scv
+
+# 1) Completely remove old graph info
+for key in ["neighbors", "paga"]:
+    if key in adata_KO.uns:
+        del adata_KO.uns[key]
+
+for key in ["distances", "connectivities"]:
+    if key in adata_KO.obsp:
+        del adata_KO.obsp[key]
+
+# 2) Recompute PCA if missing (won't overwrite existing X_umap or clustering)
+scv.pp.filter_and_normalize(adata_KO)
+scv.pp.pca(adata_KO)
+
+# 3) ***REBUILD NEIGHBOR GRAPH FOR VELOCITY***
+scv.pp.moments(adata_KO, n_pcs=30, n_neighbors=30)
+
+# 4) Recompute velocities
+scv.tl.velocity(adata_KO, mode="stochastic")
+scv.tl.velocity_graph(adata_KO)
+
+# 5) Now PAGA will run successfully
+import scanpy as sc
+sc.tl.paga(adata_KO, groups="Cluster")
+
+
+
+
+scv.pl.paga(adata_KO, basis='umap',
+             size=50, alpha=0.1,
+             min_edge_width=2,
+             node_size_scale=1.5,
+             save='wt_paga.KO.pdf')
+
+
+
+
+
+# Part 4: Analyzing a specific cell population
+
+
+
+df = adata_WT.var
+df = df[(df['fit_likelihood'] > .1) & df['velocity_genes'] == True]
+
+kwargs = dict(xscale='log', fontsize=16)
+with scv.GridSpec(ncols=3) as pl:
+    pl.hist(df['fit_alpha'], xlabel='transcription rate', **kwargs)
+    pl.hist(df['fit_beta'] * df['fit_scaling'], xlabel='splicing rate', xticks=[.1, .4, 1], **kwargs)
+    pl.hist(df['fit_gamma'], xlabel='degradation rate', xticks=[.1, .4, 1], **kwargs)
+
+scv.get_df(adata_WT, 'fit*', dropna=True).head()
+
+
+scv.tl.latent_time(adata_WT)
+scv.pl.scatter(adata_WT, color='latent_time', color_map='gnuplot', size=80,
+save='WT_velocity.latent.time.pdf')
+
+
+import scvelo as scv
+import pandas as pd
+
+# ----------------------------
+# 1️⃣ Selección de clusters
+# ----------------------------
+cluster_A = "Slamf Monocytes"
+cluster_B = "IFN Mac"
+
+subset = adata_WT[adata_WT.obs["Cluster"].isin([cluster_A, cluster_B])].copy()
+
+# ----------------------------
+# 2️⃣ Rankear genes dinámicos (usar min_corr bajo para asegurar resultados)
+# ----------------------------
+scv.tl.rank_velocity_genes(subset, groupby="Cluster", min_corr=0.05)
+
+# ----------------------------
+# 3️⃣ Extraer top genes y exportar
+# ----------------------------
+top_genes = subset.uns['rank_velocity_genes']['names'][:30]  # top 30 genes
+pd.DataFrame(top_genes, columns=['gene']).to_csv("WT_top_genes_Slamf_IFN.csv", index=False)
+
+# ----------------------------
+# 4️⃣ Visualizar los top genes en UMAP
+# ----------------------------
+for gene in top_genes[:10]:  # top 10 para visualizar
+    scv.pl.scatter(subset, color=gene, basis='umap', show=True)
+
+
+
 
 
 gene = "Trem1"
