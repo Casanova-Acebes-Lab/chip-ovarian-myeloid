@@ -52,36 +52,38 @@ adata.obsm['X_umap'] = np.vstack((adata.obs['UMAP_1'], adata.obs['UMAP_2'])).T
 
 
 # --- Paleta de R como diccionario ---
+
 nora_colors = {
     # --- MONOCITOS & TAMs (ROJOS) ---
-  "Ly6cHi Monocytes"     = "#FF0000",  # Rojo inflamatorio puro
-  "Ly6cLo Monocytes"     = "#FF6A6A",  # Rojo salmón transición
-  "Early IFN|MHCII-TAMs"       = "#B22222",  # Rojo vino (pre-TAM IFN)
-  "Trem1|Ptgs2|Plaur|Celc4e Mac" = "#EE7942",   # naranja vivo (inflam. activados)
-  "Mrc1|C1qc|Cbr2|Gas6 Mac"      = "#FFD92F",   # amarillo brillante (TAM residentes)
-  "Arg1|Spp1|Mmp12|Mmp19|Il1a Mac" = "#4DAF4A", # verde TAM reparadores
-  "Npr2|Actn1 Mac"       = "#A6D854",   # verde lima (TAM estructurales)
-  "Marco+ Mac"           = "#1E3A8A",   # azul intermedio (scavenger)
-  "Mmp9|Ctsk Mac"        = "#00723F",   # verde botella (remodelado matriz)
-  "IFN Mac"              = "#C080FF",   # morado claro (TAM interferón maduros)
-  "Fn1|Vegfa Mac"        = "#FFA500",   # naranja angiogénico
-  "MHCII|Siglec Mac"     = "#1E90FF",   # azul cobalto (antigen presenting)
-  "MHCII|Ccl12 Mac"      = "#4682B4",   # azul acero
+    "Ly6cHi Monocytes": "#FF0000",      # Rojo inflamatorio puro
+    "Ly6cLo Monocytes": "#FF6A6A",      # Rojo salmón transición
+    "Early IFN|MHCII-TAMs": "#B22222",  # Rojo vino (pre-TAM IFN)
+    "Trem1|Ptgs2|Plaur|Celc4e Mac": "#EE7942",   # naranja vivo (inflam. activados)
+    "Mrc1|C1qc|Cbr2|Gas6 Mac": "#FFD92F",        # amarillo brillante (TAM residentes)
+    "Arg1|Spp1|Mmp12|Mmp19|Il1a Mac": "#4DAF4A", # verde TAM reparadores
+    "Npr2|Actn1 Mac": "#A6D854",       # verde lima (TAM estructurales)
+    "Marco+ Mac": "#1E3A8A",           # azul intermedio (scavenger)
+    "Mmp9|Ctsk Mac": "#00723F",        # verde botella (remodelado matriz)
+    "IFN Mac": "#C080FF",              # morado claro (TAM interferón maduros)
+    "Fn1|Vegfa Mac": "#FFA500",        # naranja angiogénico
+    "MHCII|Siglec Mac": "#1E90FF",     # azul cobalto (antigen presenting)
+    "MHCII|Ccl12 Mac": "#4682B4",      # azul acero
 
-  # --- CÉLULAS LINFOIDES ---
-  "Cd8 T cells"          = "#00BFC4",   # turquesa
-  "Cd4 T cells"          = "#FF69B4",   # rosa fuerte
-  "Cd8 Effector"         = "#A52A2A",   # rojo ladrillo
-  "Tgd"                  = "#D9B3FF",   # lila pastel
-  "NK"                   = "#AB82FF",   # violeta oscuro
-  "Activated B cells"    = "#FF1493",   # fucsia intenso
-  "B cells"              = "#DC143C",   # rojo intenso
+    # --- CÉLULAS LINFOIDES ---
+    "Cd8 T cells": "#00BFC4",          # turquesa
+    "Cd4 T cells": "#FF69B4",          # rosa fuerte
+    "Cd8 Effector": "#A52A2A",         # rojo ladrillo
+    "Tgd": "#D9B3FF",                  # lila pastel
+    "NK": "#AB82FF",                   # violeta oscuro
+    "Activated B cells": "#FF1493",    # fucsia intenso
+    "B cells": "#DC143C",              # rojo intenso
 
-  # --- INNATAS ---
-  "Neutrophils"          = "#4876FF",   # azul fuerte
-  "DCs"                  = "#87CEEB",   # azul claro
-  "Mastocytes"           = "#3CB371"    # verde saturado
+    # --- INNATAS ---
+    "Neutrophils": "#4876FF",          # azul fuerte
+    "DCs": "#87CEEB",                  # azul claro
+    "Mastocytes": "#3CB371"            # verde saturado
 }
+
 
 # --- Columna de interés ---
 col = 'Clustering.Round2'
@@ -136,7 +138,6 @@ scv.set_figure_params(style='white', dpi=150)
 # LOAD DATA
 # ==========
 adata = sc.read_h5ad(f"{outdir}/scVelo/velocyto_loom_files/processed_h5ad/adata_with_velocity_layers_subsetted.h5ad")
-
 print("Genes totales antes del filtrado:", adata.n_vars)
 
 # ==========
@@ -144,39 +145,31 @@ print("Genes totales antes del filtrado:", adata.n_vars)
 # ==========
 scv.pp.filter_and_normalize(
     adata,
-    min_shared_counts=20,   # ← robusto, mantiene genes expresados en suficientes células
-    n_top_genes=2000        # ← selecciona las más informativas
+    min_shared_counts=20,   # aquí puedes ajustar si quieres más genes informativos
+    n_top_genes=2000        # recomendado usar ~2k genes + velocity
 )
 
-# ==========
-# 2) PCA + Vecinos
-# ==========
-sc.pp.pca(adata, n_comps=30)
-sc.pp.neighbors(adata, n_neighbors=30, n_pcs=30)
+print("Genes tras filtrado y normalización:", adata.n_vars)
 
 # ==========
-# 3) MOMENTS
+# 2) PCA + VECINOS + UMAP
 # ==========
-scv.pp.moments(adata, n_pcs=30, n_neighbors=30)
-
-# ==========
-# 4) VELOCITY + GRAPH
-# ==========
-scv.tl.velocity(adata, mode='stochastic')
+scv.pp.moments(adata, n_pcs=30, n_neighbors=70)
+scv.tl.velocity(adata, mode='stochastic')     # o "dynamical" si quieres estimar rates
 scv.tl.velocity_graph(adata)
 
-print("Genes tras filtrado:", adata.n_vars)
-
 # ==========
-# 5) VISUALIZACIÓN GLOBAL
+# 3) VISUALIZACIÓN GLOBAL
 # ==========
 scv.pl.velocity_embedding_stream(
-    adata, basis='umap', color='Cluster',
+    adata, basis='umap', color='Clustering.Round2',
     legend_loc='right margin', save='velocity_stream_all.pdf'
 )
 
+
+
 scv.pl.velocity_embedding_grid(
-    adata, basis='umap', color='Cluster',
+    adata, basis='umap', color='Clustering.Round2',
     arrow_size=2.0, arrow_length=4.0,
     legend_loc='right margin', save='velocity_grid_all.pdf'
 )
@@ -189,12 +182,12 @@ adata_WT = adata[adata.obs['group'] == 'WT'].copy()
 scv.tl.velocity_embedding(adata_WT, basis='umap')
 
 scv.pl.velocity_embedding_stream(
-    adata_WT, basis='umap', color='Cluster',
+    adata_WT, basis='umap', color='Clustering.Round2',
     legend_loc='right margin', save='WT_velocity_stream.pdf'
 )
 
 scv.pl.velocity_embedding_grid(
-    adata_WT, basis='umap', color='Cluster',
+    adata_WT, basis='umap', color='Clustering.Round2',
     arrow_size=2.0, arrow_length=4.0,
     legend_loc='right margin', save='WT_velocity_grid.pdf'
 )
@@ -206,12 +199,12 @@ adata_KO = adata[adata.obs['group'] == 'KO'].copy()
 scv.tl.velocity_embedding(adata_KO, basis='umap')
 
 scv.pl.velocity_embedding_stream(
-    adata_KO, basis='umap', color='Cluster',
+    adata_KO, basis='umap', color='Clustering.Round2',
     legend_loc='right margin', save='KO_velocity_stream.pdf'
 )
 
 scv.pl.velocity_embedding_grid(
-    adata_KO, basis='umap', color='Cluster',
+    adata_KO, basis='umap', color='Clustering.Round2',
     arrow_size=2.0, arrow_length=4.0,
     legend_loc='right margin', save='KO_velocity_grid.pdf'
 )
@@ -239,6 +232,192 @@ scv.pl.velocity(
 )
 
 
+
+
+scv.tl.rank_velocity_genes(adata_WT, groupby='Clustering.Round2', min_corr=.3)
+
+
+pd.set_option('display.max_columns', None)
+pd.set_option('display.width', 0)
+
+df = pd.DataFrame(adata_WT.uns['rank_velocity_genes']['names'])
+print(df.head(20))  # muestra las primeras 10 filas completas
+
+
+
+
+scv.tl.rank_velocity_genes(adata_KO, groupby='Clustering.Round2', min_corr=.3)
+
+pd.set_option('display.max_columns', None)
+pd.set_option('display.width', 0)
+
+df = pd.DataFrame(adata_KO.uns['rank_velocity_genes']['names'])
+print(df.head(20))  # muestra las primeras 10 filas completas)
+
+
+kwargs = dict(frameon=False, size=10, linewidth=1.5,
+              add_outline='Ly6cHi Monocytes, Early IFN|MHCII-TAMs', "IFN Mac" )
+
+scv.pl.scatter(adata_WT, df['Ly6cHi Monocytes'][:4], ylabel='Ly6cHi Monocytes', frameon=False, 
+color='Clustering.Round2', size=10, linewidth=1.5,
+save='scatter.WT.Ly6cHi Monocytes.pdf')
+scv.pl.scatter(adata_WT, df['Early IFN|MHCII-TAMs'][:4], ylabel='Early IFN|MHCII-TAMs', frameon=False, 
+color='Clustering.Round2', size=10, linewidth=1.5,
+save='scatter.WT.Early IFN|MHCII-TAMs.pdf')
+scv.pl.scatter(adata_WT, df['IFN Mac'][:4], ylabel='IFN Mac', frameon=False, 
+color='Clustering.Round2', size=10, linewidth=1.5,
+save='scatter.WT.IFN Mac.pdf')
+
+
+
+
+scv.tl.velocity_confidence(adata_WT)
+keys = 'velocity_length', 'velocity_confidence'
+scv.pl.scatter(adata_WT, c=keys, cmap='coolwarm', perc=[5, 95],
+save='scatter.WT.confidence.png')
+
+
+
+
+scv.tl.velocity_confidence(adata_KO)
+keys = 'velocity_length', 'velocity_confidence'
+scv.pl.scatter(adata_KO, c=keys, cmap='coolwarm', perc=[5, 95],
+save='scatter.KO.confidence.png')
+
+
+
+
+
+
+print("WT: células =", adata_WT.n_obs, "genes =", adata_WT.n_vars)
+print("KO: células =", adata_KO.n_obs, "genes =", adata_KO.n_vars)
+
+# =====================
+# 2️⃣ RECONSTRUIR GRAFO
+# =====================
+for adata in [adata_WT, adata_KO]:
+    scv.pp.pca(adata, n_comps=30)
+    scv.pp.neighbors(adata, n_neighbors=70, n_pcs=30)
+    scv.pp.moments(adata, n_pcs=30, n_neighbors=70)
+    scv.tl.velocity(adata, mode='stochastic')
+    scv.tl.velocity_graph(adata)
+    print(f"Grafo reconstruido para {adata.uns.get('dataset', 'dataset desconocido')}")
+
+# =====================
+# 3️⃣ DEFINIR CELULAS RAIZ
+# =====================
+# Nota: usamos directamente boolean indexing en vez de query()
+root_cells_WT = adata_WT.obs_names[adata_WT.obs['Clustering.Round2'] == 'Ly6cHi Monocytes']
+root_cells_KO = adata_KO.obs_names[adata_KO.obs['Clustering.Round2'] == 'Ly6cHi Monocytes']
+
+print("WT: células raíz =", len(root_cells_WT))
+print("KO: células raíz =", len(root_cells_KO))
+
+# =====================
+# 4️⃣ PSEUDOTIME
+# =====================
+# Para WT
+scv.tl.velocity_pseudotime(adata_WT, root_key=root_cells_WT)
+print("Pseudotime calculado para WT")
+scv.pl.scatter(adata_WT, color='velocity_pseudotime', cmap='gnuplot',
+               save='WT_velocity_pseudotime.png')
+
+# Para KO
+scv.tl.velocity_pseudotime(adata_KO, root_key=root_cells_KO)
+print("Pseudotime calculado para KO")
+scv.pl.scatter(adata_KO, color='velocity_pseudotime', cmap='gnuplot',
+               save='KO_velocity_pseudotime.png')
+
+
+
+### Dynamical mode
+
+
+import scvelo as scv
+import scanpy as sc
+
+scv.set_figure_params(style='white', dpi=150)
+
+# ==========
+# LOAD DATA
+# ==========
+adata = sc.read_h5ad(f"{outdir}/scVelo/velocyto_loom_files/processed_h5ad/adata_with_velocity_layers_subsetted.h5ad")
+print("Genes totales antes del filtrado:", adata.n_vars)
+
+# ==========
+# 1) FILTRADO + NORMALIZACIÓN
+# ==========
+scv.pp.filter_and_normalize(
+    adata,
+    min_shared_counts=1,  # mínimo absoluto
+    n_top_genes=adata.n_vars
+)
+
+
+
+# ==========
+# 2) PCA + Vecinos
+# ==========
+sc.pp.pca(adata, n_comps=30)
+sc.pp.neighbors(adata, n_neighbors=30, n_pcs=30)
+
+# ==========
+# 3) MOMENTS
+# ==========
+scv.pp.moments(adata, n_pcs=30, n_neighbors=30)
+
+# ==========
+# 4) DYNAMICAL MODEL
+# ==========
+print("Recuperando dinámica de genes (puede tardar)...")
+scv.tl.recover_dynamics(adata, n_jobs=8)   # ← ajusta n_jobs según tu CPU
+
+# ==========
+# 5) VELOCITY + GRAPH en modo DYNAMICAL
+# ==========
+scv.tl.velocity(adata, mode='dynamical')
+adata.layers['velocity'] = -adata.layers['velocity']
+scv.tl.velocity_graph(adata)
+
+
+print("Genes tras filtrado:", adata.n_vars)
+
+# ==========
+# 6) LATENT TIME (ordenación en tiempo biológico)
+# ==========
+scv.tl.latent_time(adata)
+
+# ==========
+# 7) VISUALIZACIÓN GLOBAL
+# ==========
+scv.pl.scatter(adata, color='latent_time', cmap='viridis',save='velocity_latent.pdf')
+
+scv.pl.velocity_embedding_stream(
+    adata, basis='umap', color='Clustering.Round2',
+    legend_loc='right margin', save='velocity_stream_dynamical.pdf'
+)
+
+# ==========
+# 8) WT
+# ==========
+adata_WT = adata[adata.obs['group'] == 'WT'].copy()
+scv.tl.velocity_embedding(adata_WT, basis='umap')
+
+scv.pl.velocity_embedding_stream(
+    adata_WT, basis='umap', color='Clustering.Round2',
+    legend_loc='right margin', save='WT_velocity_stream_dynamical.png'
+)
+
+# ==========
+# 9) KO
+# ==========
+adata_KO = adata[adata.obs['group'] == 'KO'].copy()
+scv.tl.velocity_embedding(adata_KO, basis='umap')
+
+scv.pl.velocity_embedding_stream(
+    adata_KO, basis='umap', color='Clustering.Round2',
+    legend_loc='right margin', save='KO_velocity_stream_dynamical.png'
+)
 
 
 ### Part 3: Downstream analysis

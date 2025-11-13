@@ -347,3 +347,121 @@ plot_gsea <- function(gsea_df, title = "GSEA Plot") {
       legend.position = "none"
     )
 }
+
+
+
+
+
+# --------------------------------------------
+# 1️⃣ Pseudobulk with raw counts
+# --------------------------------------------
+pseudobulk_cluster <- function(seurat_obj, cluster_name, cluster_col="Clustering.Round2", sample_col="tag"){
+  
+  # raw counts assay RNA
+  counts <- GetAssayData(seurat_obj, assay="RNA", slot="counts")
+  meta   <- seurat_obj@meta.data
+  
+  # Select cells
+  cells <- rownames(meta)[meta[[cluster_col]] == cluster_name]
+  counts <- counts[, cells, drop=FALSE]
+  
+  # vector of samples
+  samples <- as.character(meta[cells, sample_col])
+  
+  # counts per sample
+  pb_mat <- t(aggregate.Matrix(t(counts), groupings=samples, fun="sum"))
+  
+  # cells per sample
+  n_cells <- table(samples)
+  n_cells <- n_cells[colnames(pb_mat)]  # asegurar orden
+  
+  # total counts per sample
+  n_counts <- colSums(pb_mat)
+  
+  list(pb_mat=pb_mat, n_cells=n_cells, n_counts=n_counts)
+}
+
+# --------------------------------------------
+# 2️⃣ Metadata for samples
+# --------------------------------------------
+make_sample_metadata <- function(sample_names){
+  df <- data.frame(sample = sample_names)
+  df$genotype <- ifelse(grepl("KO", sample_names), "KO", "WT")
+  df$dsred    <- ifelse(grepl("DsRedP", sample_names), "DsRedP", "DsRedN")
+  rownames(df) <- df$sample
+  df
+}
+
+# --------------------------------------------
+# 3️⃣ Limma-voom adjusting by nCells & nCounts
+# --------------------------------------------
+run_limma_cluster <- function(pb_mat, sample_meta, n_cells){
+  
+  # DGEList
+  dge <- DGEList(counts = pb_mat)
+  keep <- rowSums(dge$counts) > 10
+  dge <- dge[keep, , keep.lib.sizes=FALSE]
+  dge <- calcNormFactors(dge)
+  
+  # factor genotype
+  sample_meta$genotype <- factor(sample_meta$genotype, levels = c("WT", "KO"))
+  
+  if (nlevels(sample_meta$genotype) < 2) {
+    stop("Just one level of genotype in this cluster → KO vs WT contrast not available")
+  }
+  
+  # covariables: nCells & nCounts
+  sample_meta$nCells <- as.numeric(n_cells[colnames(pb_mat)])
+
+  
+  # design
+  design <- model.matrix(~ nCells + genotype, data = sample_meta)
+  
+  # voom
+  v <- voom(dge, design, plot=FALSE)
+  
+  # adjust
+  fit <- lmFit(v, design)
+  
+  # contrast KO vs WT
+  cont.matrix <- makeContrasts(KOvsWT = genotypeKO, levels = design)
+  fit2 <- contrasts.fit(fit, cont.matrix)
+  fit2 <- eBayes(fit2)
+  
+  # table
+  tt <- topTable(fit2, coef="KOvsWT", number=Inf, sort.by="none")
+  tt <- tt[order(tt$adj.P.Val), ]
+  tt$gene <- rownames(tt)
+  tt
+}
+
+
+Volcano2 <- function(data, legend, logFC_threshold = 0.5) {
+  data$gene <- rownames(data)
+  
+  # Solo etiquetar genes diferencialmente expresados
+  data$label <- ifelse(data$diffexpressed != "NO", data$gene, NA)
+  
+  plot <- ggplot(data, aes(x = logFC, y = -log10(adj.P.Val),
+                           color = diffexpressed)) +
+    geom_point() +
+    geom_text_repel(
+      data = subset(data, !is.na(label)),
+      aes(label = label),
+      size = 3,
+      segment.colour = NA,
+      force = 2,
+      box.padding = 0.5,
+      point.padding = 0.5
+    ) +
+    geom_vline(xintercept = c(-logFC_threshold, logFC_threshold),
+               linetype = "dashed", color = "black") +
+    theme_minimal() +
+    scale_color_manual(values = c("Down" = "dodgerblue4",
+                                  "NO"   = "dimgrey",
+                                  "Up"   = "brown1")) +
+    ggtitle(paste("DEG", legend)) +
+    labs(x = "logFC", y = "-log10(adj.pval)")
+  
+  return(plot)
+}
