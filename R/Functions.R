@@ -465,3 +465,58 @@ Volcano2 <- function(data, legend, logFC_threshold = 0.5) {
   
   return(plot)
 }
+
+
+
+run_pseudobulk_analysis <- function(data, cluster_name, outdir, rsdir) {
+  # Ejecutar pseudobulk para un cluster específico
+  res <- pseudobulk_cluster(data, cluster_name = cluster_name)
+  pb_mat <- res$pb_mat
+  n_cells <- res$n_cells
+  n_counts <- res$n_counts
+
+  # Crear metadatos
+  sample_meta <- make_sample_metadata(colnames(pb_mat))
+
+  # Ejecutar limma
+  res_limma <- run_limma_cluster(pb_mat, sample_meta, n_cells)
+
+  # Clasificación de genes diferencialmente expresados
+  res_limma$diffexpressed <- "NO"
+  res_limma$diffexpressed[res_limma$adj.P.Val < 0.05 & res_limma$logFC > 0.5] <- "Up"
+  res_limma$diffexpressed[res_limma$adj.P.Val < 0.05 & res_limma$logFC < -0.5] <- "Down"
+
+  # Top genes
+  top_genes <- res_limma %>%
+    arrange(adj.P.Val) %>%
+    slice_head(n = 50) %>%
+    as.data.frame()
+
+  # Guardar tabla completa
+  write.table(
+    res_limma,
+    file = paste0(rsdir, "/table.macros.", cluster_name, ".tsv"),
+    sep = "\t",
+    quote = FALSE,
+    row.names = FALSE
+  )
+
+  # Crear Volcano plot
+  p <- Volcano2(data = res_limma, legend = paste0("KO vs WT samples. ", cluster_name))
+
+  # Guardar el plot en PDF
+  pdf(paste0(outdir, "/Pseudobulk/Volcano.KO_vs_WT_", cluster_name, ".pdf"),
+      width = 16, height = 12)
+  print(p)
+  dev.off()
+
+  # Devolver resultados
+  return(list(
+    cluster = cluster_name,
+    res_limma = res_limma,
+    top_genes = top_genes,
+    n_cells = n_cells,
+    n_counts = n_counts,
+    plot = p
+  ))
+}

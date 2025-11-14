@@ -51,60 +51,6 @@ table(data@meta.data$sample)
 # --------------------------------------------
 
 
-run_pseudobulk_analysis <- function(data, cluster_name, outdir, rsdir) {
-  # Ejecutar pseudobulk para un cluster específico
-  res <- pseudobulk_cluster(data, cluster_name = cluster_name)
-  pb_mat <- res$pb_mat
-  n_cells <- res$n_cells
-  n_counts <- res$n_counts
-
-  # Crear metadatos
-  sample_meta <- make_sample_metadata(colnames(pb_mat))
-
-  # Ejecutar limma
-  res_limma <- run_limma_cluster(pb_mat, sample_meta, n_cells)
-
-  # Clasificación de genes diferencialmente expresados
-  res_limma$diffexpressed <- "NO"
-  res_limma$diffexpressed[res_limma$adj.P.Val < 0.05 & res_limma$logFC > 0.5] <- "Up"
-  res_limma$diffexpressed[res_limma$adj.P.Val < 0.05 & res_limma$logFC < -0.5] <- "Down"
-
-  # Top genes
-  top_genes <- res_limma %>%
-    arrange(adj.P.Val) %>%
-    slice_head(n = 50) %>%
-    as.data.frame()
-
-  # Guardar tabla completa
-  write.table(
-    res_limma,
-    file = paste0(rsdir, "/table.macros.", cluster_name, ".tsv"),
-    sep = "\t",
-    quote = FALSE,
-    row.names = FALSE
-  )
-
-  # Crear Volcano plot
-  p <- Volcano2(data = res_limma, legend = paste0("KO vs WT samples. ", cluster_name))
-
-  # Guardar el plot en PDF
-  pdf(paste0(outdir, "/Pseudobulk/Volcano.KO_vs_WT_", cluster_name, ".pdf"),
-      width = 16, height = 12)
-  print(p)
-  dev.off()
-
-  # Devolver resultados
-  return(list(
-    cluster = cluster_name,
-    res_limma = res_limma,
-    top_genes = top_genes,
-    n_cells = n_cells,
-    n_counts = n_counts,
-    plot = p
-  ))
-}
-
-
 
 
 # Ly6cHi_Monocytes
@@ -207,521 +153,6 @@ Neutrophils[[4]]
 
 
 
-# Ly6c|Ms4ac Monocytes
-
-res <- pseudobulk_cluster(data, cluster_name="Ly6cHi Monocytes")
-pb_mat <- res$pb_mat
-n_cells <- res$n_cells
-n_counts <- res$n_counts
-
-sample_meta <- make_sample_metadata(colnames(pb_mat))
-
-res_limma <- run_limma_cluster(pb_mat, sample_meta, n_cells)
-
-
-res_limma$diffexpressed <- "NO"
-res_limma$diffexpressed[res_limma$adj.P.Val < 0.05 & res_limma$logFC > 0.5] <- "Up"
-res_limma$diffexpressed[res_limma$adj.P.Val < 0.05 & res_limma$logFC < -0.5] <- "Down"
-
-
-# Top 20 genes
-top_genes <- res_limma %>%
-  arrange(adj.P.Val) %>%
-  slice_head(n = 50) %>%
-  as.data.frame()
-
-top_genes
-table(res_limma$diffexpressed)
-
-
-p <- Volcano2(data = res_limma, legend = "KO vs WT samples. Ly6cHi Monocytes")
-
-
-pdf(paste0(outdir,"/Pseudobulk/Volcano.KO vs WT Macrophages.Ly6cHi Monocytes.pdf"), width=16, height=12)
-print(p)
-dev.off()
-
-
-
-write.table(res_limma, paste0(rsdir,"table.macros.Ly6cHi Monocytes.tsv"), sep='\t')
-
-
-# Trem1|Ptgs2|Plaur|Celc4e
-
-
-res <- pseudobulk_cluster(data, cluster_name="Trem1|Ptgs2|Plaur|Celc4e Mac")
-pb_mat <- res$pb_mat
-n_cells <- res$n_cells
-n_counts <- res$n_counts
-
-sample_meta <- make_sample_metadata(colnames(pb_mat))
-
-res_limma <- run_limma_cluster(pb_mat, sample_meta, n_cells)
-
-
-res_limma$diffexpressed <- "NO"
-res_limma$diffexpressed[res_limma$adj.P.Val < 0.05 & res_limma$logFC > 0.5] <- "Up"
-res_limma$diffexpressed[res_limma$adj.P.Val < 0.05 & res_limma$logFC < -0.5] <- "Down"
-
-
-# Top 20 genes
-top_genes <- res_limma %>%
-  arrange(adj.P.Val) %>%
-  slice_head(n = 50) %>%
-  as.data.frame()
-
-top_genes
-table(res_limma$diffexpressed)
-
-
-
-p <- Volcano2(data = res_limma, legend = "KO vs WT samples.Trem1|Ptgs2|Plaur|Celc4e Mac")
-
-
-pdf(paste0(outdir,"/Pseudobulk/Volcano.KO vs WT Macrophages.Trem1|Ptgs2|Plaur|Celc4e Mac.pdf"), width=16, height=12)
-print(p)
-dev.off()
-
-write.table(res_limma, paste0(rsdir,"table.macros.Trem1|Ptgs2|Plaur|Celc4e Mac.tsv"), sep='\t')
-
-
-
-
-# Mrc1|C1Pseudobulk|Cbr2|Gas6 Mac
-
-
-res <- pseudobulk_cluster(data, cluster_name="Mrc1|C1Pseudobulk|Cbr2|Gas6 Mac")
-pb_mat <- res$pb_mat
-n_cells <- res$n_cells
-n_counts <- res$n_counts
-
-sample_meta <- make_sample_metadata(colnames(pb_mat))
-
-res_limma <- run_limma_cluster(pb_mat, sample_meta, n_cells)
-
-
-res_limma$diffexpressed <- "NO"
-res_limma$diffexpressed[res_limma$adj.P.Val < 0.05 & res_limma$logFC > 0.5] <- "Up"
-res_limma$diffexpressed[res_limma$adj.P.Val < 0.05 & res_limma$logFC < -0.5] <- "Down"
-
-
-# Top 20 genes
-top_genes <- res_limma %>%
-  arrange(adj.P.Val) %>%
-  slice_head(n = 50) %>%
-  as.data.frame()
-
-top_genes
-table(res_limma$diffexpressed)
-
-
-
-p <- Volcano2(data = res_limma, legend = "KO vs WT samples.Mrc1|C1Pseudobulk|Cbr2|Gas6 Mac")
-
-
-pdf(paste0(outdir,"/Pseudobulk/Volcano.KO vs WT Macrophages.Mrc1|C1Pseudobulk|Cbr2|Gas6 Mac.pdf"), width=16, height=12)
-print(p)
-dev.off()
-
-
-write.table(res_limma, paste0(rsdir,"table.macros.Mrc1|C1Pseudobulk|Cbr2|Gas6 Mac.tsv"), sep='\t')
-
-
-
-
-
-
-# Arg1|Spp1|Mmp12|Mmp19|Il1a Mac
-
-
-res <- pseudobulk_cluster(data, cluster_name="Arg1|Spp1|Mmp12|Mmp19|Il1a Mac")
-pb_mat <- res$pb_mat
-n_cells <- res$n_cells
-n_counts <- res$n_counts
-
-sample_meta <- make_sample_metadata(colnames(pb_mat))
-
-res_limma <- run_limma_cluster(pb_mat, sample_meta, n_cells)
-
-
-res_limma$diffexpressed <- "NO"
-res_limma$diffexpressed[res_limma$adj.P.Val < 0.05 & res_limma$logFC > 0.5] <- "Up"
-res_limma$diffexpressed[res_limma$adj.P.Val < 0.05 & res_limma$logFC < -0.5] <- "Down"
-
-
-# Top 20 genes
-top_genes <- res_limma %>%
-  arrange(adj.P.Val) %>%
-  slice_head(n = 50) %>%
-  as.data.frame()
-
-top_genes
-table(res_limma$diffexpressed)
-
-
-
-
-p <- Volcano2(data = res_limma, legend = "KO vs WT samples. Arg1|Spp1|Mmp12|Mmp19|Il1a Mac")
-
-
-pdf(paste0(outdir,"/Pseudobulk/Volcano.KO vs WT Macrophages.Arg1|Spp1|Mmp12|Mmp19|Il1a Mac.pdf"), width=16, height=12)
-print(p)
-dev.off()
-
-write.table(res_limma, paste0(rsdir,"table.macros.Arg1|Spp1|Mmp12|Mmp19|Il1a Mac.tsv"), sep='\t')
-
-
-
-
-# Npr2|Actn1 Mac
-
-
-res <- pseudobulk_cluster(data, cluster_name="Npr2|Actn1 Mac")
-pb_mat <- res$pb_mat
-n_cells <- res$n_cells
-n_counts <- res$n_counts
-
-sample_meta <- make_sample_metadata(colnames(pb_mat))
-
-res_limma <- run_limma_cluster(pb_mat, sample_meta, n_cells)
-
-
-res_limma$diffexpressed <- "NO"
-res_limma$diffexpressed[res_limma$adj.P.Val < 0.05 & res_limma$logFC > 0.5] <- "Up"
-res_limma$diffexpressed[res_limma$adj.P.Val < 0.05 & res_limma$logFC < -0.5] <- "Down"
-
-
-# Top 20 genes
-top_genes <- res_limma %>%
-  arrange(adj.P.Val) %>%
-  slice_head(n = 50) %>%
-  as.data.frame()
-
-top_genes
-table(res_limma$diffexpressed)
-
-
-
-p <- Volcano2(data = res_limma, legend = "KO vs WT samples. Npr2|Actn1 Mac")
-
-
-pdf(paste0(outdir,"/Pseudobulk/Volcano.KO vs WT Macrophages.Npr2|Actn1 Mac.pdf"), width=16, height=12)
-print(p)
-dev.off()
-
-
-
-write.table(res_limma, paste0(rsdir,"table.macros.Npr2|Actn1 Mac.tsv"), sep='\t')
-
-
-
-
-# Mmp9|Ctsk Mac
-
-
-res <- pseudobulk_cluster(data, cluster_name="Mmp9|Ctsk Mac")
-pb_mat <- res$pb_mat
-n_cells <- res$n_cells
-n_counts <- res$n_counts
-
-sample_meta <- make_sample_metadata(colnames(pb_mat))
-
-res_limma <- run_limma_cluster(pb_mat, sample_meta, n_cells)
-
-
-res_limma$diffexpressed <- "NO"
-res_limma$diffexpressed[res_limma$adj.P.Val < 0.05 & res_limma$logFC > 0.5] <- "Up"
-res_limma$diffexpressed[res_limma$adj.P.Val < 0.05 & res_limma$logFC < -0.5] <- "Down"
-
-
-# Top 20 genes
-top_genes <- res_limma %>%
-  arrange(adj.P.Val) %>%
-  slice_head(n = 50) %>%
-  as.data.frame()
-
-top_genes
-table(res_limma$diffexpressed)
-
-
-p <- Volcano2(data = res_limma, legend = "KO vs WT samples. Mmp9|Ctsk Mac")
-
-
-pdf(paste0(outdir,"/Pseudobulk/Volcano.KO vs WT Macrophages.Mmp9|Ctsk Mac.pdf"), width=16, height=12)
-print(p)
-dev.off()
-
-
-write.table(res_limma, paste0(rsdir,"table.macros.Mmp9|Ctsk Mac.tsv"), sep='\t')
-
-
-
-
-# Ciita|Siglec Mac 
-
-
-res <- pseudobulk_cluster(data, cluster_name="Ciita|Siglec Mac")
-pb_mat <- res$pb_mat
-n_cells <- res$n_cells
-n_counts <- res$n_counts
-
-sample_meta <- make_sample_metadata(colnames(pb_mat))
-
-res_limma <- run_limma_cluster(pb_mat, sample_meta, n_cells)
-
-
-res_limma$diffexpressed <- "NO"
-res_limma$diffexpressed[res_limma$adj.P.Val < 0.05 & res_limma$logFC > 0.5] <- "Up"
-res_limma$diffexpressed[res_limma$adj.P.Val < 0.05 & res_limma$logFC < -0.5] <- "Down"
-
-
-# Top 20 genes
-top_genes <- res_limma %>%
-  arrange(adj.P.Val) %>%
-  slice_head(n = 50) %>%
-  as.data.frame()
-
-top_genes
-table(res_limma$diffexpressed)
-
-
-
-p <- Volcano2(data = res_limma, legend = "KO vs WT samples. Ciita|Siglec Mac")
-
-
-pdf(paste0(outdir,"/Pseudobulk/Volcano.KO vs WT Macrophages.Ciita|Siglec Mac.pdf"), width=16, height=12)
-print(p)
-dev.off()
-
-
-
-write.table(res_limma, paste0(rsdir,"table.macros.Ciita|Siglec Mac.tsv"), sep='\t')
-
-
-
-
- # Ciita|Ccl12 Mac
-
-res <- pseudobulk_cluster(data, cluster_name="Ciita|Ccl12 Mac")
-pb_mat <- res$pb_mat
-n_cells <- res$n_cells
-n_counts <- res$n_counts
-
-sample_meta <- make_sample_metadata(colnames(pb_mat))
-
-res_limma <- run_limma_cluster(pb_mat, sample_meta, n_cells)
-
-
-res_limma$diffexpressed <- "NO"
-res_limma$diffexpressed[res_limma$adj.P.Val < 0.05 & res_limma$logFC > 0.5] <- "Up"
-res_limma$diffexpressed[res_limma$adj.P.Val < 0.05 & res_limma$logFC < -0.5] <- "Down"
-
-
-# Top 20 genes
-top_genes <- res_limma %>%
-  arrange(adj.P.Val) %>%
-  slice_head(n = 50) %>%
-  as.data.frame()
-
-top_genes
-table(res_limma$diffexpressed)
-
-
-
-p <- Volcano2(data = res_limma, legend = "KO vs WT samples. Ciita|Ccl12 Mac")
-
-
-pdf(paste0(outdir,"/Pseudobulk/Volcano.KO vs WT Macrophages.Ciita|Ccl12 Mac.pdf"), width=16, height=12)
-print(p)
-dev.off()
-
-
-
-
-write.table(res_limma, paste0(rsdir,"table.macros.Ciita|Ccl12 Mac.tsv"), sep='\t')
-
-
-# IFN Mac 
-
-
-res <- pseudobulk_cluster(data, cluster_name="IFN Mac")
-pb_mat <- res$pb_mat
-n_cells <- res$n_cells
-n_counts <- res$n_counts
-
-sample_meta <- make_sample_metadata(colnames(pb_mat))
-
-res_limma <- run_limma_cluster(pb_mat, sample_meta, n_cells)
-
-
-res_limma$diffexpressed <- "NO"
-res_limma$diffexpressed[res_limma$adj.P.Val < 0.05 & res_limma$logFC > 0.5] <- "Up"
-res_limma$diffexpressed[res_limma$adj.P.Val < 0.05 & res_limma$logFC < -0.5] <- "Down"
-
-
-# Top 20 genes
-top_genes <- res_limma %>%
-  arrange(adj.P.Val) %>%
-  slice_head(n = 50) %>%
-  as.data.frame()
-
-top_genes
-table(res_limma$diffexpressed)
-
-
-
-p <- Volcano2(data = res_limma, legend = "KO vs WT samples. IFN Mac")
-
-
-pdf(paste0(outdir,"/Pseudobulk/Volcano.KO vs WT Macrophages.IFN Mac.pdf"), width=16, height=12)
-print(p)
-dev.off()
-
-
-write.table(res_limma, paste0(rsdir,"table.macros.IFN Mac.tsv"), sep='\t')
-
-
-
-
-# Slamf Mac 
-
-
-res <- pseudobulk_cluster(data, cluster_name="Slamf Monocytes")
-pb_mat <- res$pb_mat
-n_cells <- res$n_cells
-n_counts <- res$n_counts
-
-sample_meta <- make_sample_metadata(colnames(pb_mat))
-
-res_limma <- run_limma_cluster(pb_mat, sample_meta, n_cells)
-
-
-res_limma$diffexpressed <- "NO"
-res_limma$diffexpressed[res_limma$adj.P.Val < 0.05 & res_limma$logFC > 0.5] <- "Up"
-res_limma$diffexpressed[res_limma$adj.P.Val < 0.05 & res_limma$logFC < -0.5] <- "Down"
-
-
-# Top 20 genes
-top_genes <- res_limma %>%
-  arrange(adj.P.Val) %>%
-  slice_head(n = 50) %>%
-  as.data.frame()
-
-top_genes
-table(res_limma$diffexpressed)
-
-
-
-p <- Volcano2(data = res_limma, legend = "KO vs WT samples. Slamf Monocytes")
-
-
-pdf(paste0(outdir,"/Pseudobulk/Volcano.KO vs WT Macrophages.Slamf Monocytes.pdf"), width=16, height=12)
-print(p)
-dev.off()
-
-
-write.table(res_limma, paste0(rsdir,"table.macros.Slamf Monocytes.tsv"), sep='\t')
-
-
-
-
-
-
-# Fn1 Mac 
-
-
-res <- pseudobulk_cluster(data, cluster_name="Fn1|Vegfa Mac")
-pb_mat <- res$pb_mat
-n_cells <- res$n_cells
-n_counts <- res$n_counts
-
-sample_meta <- make_sample_metadata(colnames(pb_mat))
-
-res_limma <- run_limma_cluster(pb_mat, sample_meta, n_cells)
-
-
-res_limma$diffexpressed <- "NO"
-res_limma$diffexpressed[res_limma$adj.P.Val < 0.05 & res_limma$logFC > 0.5] <- "Up"
-res_limma$diffexpressed[res_limma$adj.P.Val < 0.05 & res_limma$logFC < -0.5] <- "Down"
-
-
-# Top 20 genes
-top_genes <- res_limma %>%
-  arrange(adj.P.Val) %>%
-  slice_head(n = 50) %>%
-  as.data.frame()
-
-top_genes
-table(res_limma$diffexpressed)
-
-
-
-p <- Volcano2(data = res_limma, legend = "KO vs WT samples. Fn1|Vegfa Mac")
-
-
-pdf(paste0(outdir,"/Pseudobulk/Volcano.KO vs WT Macrophages.Fn1|Vegfa Mac.pdf"), width=16, height=12)
-print(p)
-dev.off()
-
-
-write.table(res_limma, paste0(rsdir,"table.macros.Fn1|Vegfa Mac.tsv"), sep='\t')
-
-
-
-
-# Neutrophils 
-
-
-res <- pseudobulk_cluster(data, cluster_name="Neutrophils")
-pb_mat <- res$pb_mat
-n_cells <- res$n_cells
-n_counts <- res$n_counts
-
-sample_meta <- make_sample_metadata(colnames(pb_mat))
-
-res_limma <- run_limma_cluster(pb_mat, sample_meta, n_cells)
-
-
-res_limma$diffexpressed <- "NO"
-res_limma$diffexpressed[res_limma$adj.P.Val < 0.05 & res_limma$logFC > 0.5] <- "Up"
-res_limma$diffexpressed[res_limma$adj.P.Val < 0.05 & res_limma$logFC < -0.5] <- "Down"
-
-
-# Top 20 genes
-top_genes <- res_limma %>%
-  arrange(adj.P.Val) %>%
-  slice_head(n = 50) %>%
-  as.data.frame()
-
-top_genes
-table(res_limma$diffexpressed)
-
-
-
-p <- Volcano2(data = res_limma, legend = "KO vs WT samples. Neutrophils")
-
-
-pdf(paste0(outdir,"/Pseudobulk/Volcano.KO vs WT Macrophages.Neutrophils.pdf"), width=16, height=12)
-print(p)
-dev.off()
-
-
-write.table(res_limma, paste0(rsdir,"table.macros.Neutrophils.tsv"), sep='\t')
-
-
-
-
-
-
-
-# All macros clusters 
-
-library(Matrix)
-library(limma)
-library(edgeR)
-library(Matrix.utils)
-library(dplyr)
-
 # 1️⃣ Pseudobulk agrupando varios clusters
 pseudobulk_group <- function(seurat_obj, clusters, cluster_col="Cluster", sample_col="tag"){
   
@@ -791,27 +222,26 @@ run_limma <- function(pb_mat, sample_meta, n_cells){
 
 
 # ---------------------------
-# 🚀 Ejemplo: todos los clusters de macrófagos
+# 🚀 For all macróphages clusters
 # ---------------------------
 
 
-# Lista de clusters
+# Cluster list
 macro_clusters <- c(
-  "Ly6c|Ms4ac Monocytes",
-  "Arg1|Spp1|Mmp12|Mmp19|Il1a Mac",
-  "Ciita|Ccl12 Mac",
-  "Ciita|Siglec Mac",
-  "Fn1|Vegfa Mac",
-  "IFN Mac",
-  "Mmp9|Ctsk Mac",
-  "Mrc1|C1Pseudobulk|Cbr2|Gas6 Mac",
-  "Neutrophils",
-  "Npr2|Actn1 Mac",
-  "Slamf Monocytes",
-  "Trem1|Ptgs2|Plaur|Celc4e Mac"
+  "Ly6cHi Monocytes", "Ly6cLo Monocytes", "Early IFN|MHCII-TAMs",
+    "Trem1|Ptgs2|Plaur|Celc4e Mac",
+    "Mrc1|C1qc|Cbr2|Gas6 Mac",
+    "Arg1|Spp1|Mmp12|Mmp19|Il1a Mac",
+    "Npr2|Actn1 Mac",
+    "Mmp9|Ctsk Mac",
+    "IFN Mac",
+    "Fn1|Vegfa Mac",
+    "MHCII|Siglec Mac",
+    "MHCII|Ccl12 Mac",
+    "Neutrophils"
 )
 
-pb_out <- pseudobulk_group(data, clusters = macro_clusters, cluster_col="Cluster", sample_col="tag")
+pb_out <- pseudobulk_group(data, clusters = macro_clusters, cluster_col="Clustering.Round2", sample_col="tag")
 sample_meta <- make_sample_metadata(colnames(pb_out$pb_mat))
 
 res_allmacs <- run_limma(pb_out$pb_mat, sample_meta, pb_out$n_cells)
@@ -876,5 +306,235 @@ p <- Volcano2(data = res_allmacs, legend = "KO vs WT samples. All Macrophages cl
 
 pdf(paste0(outdir,"/Pseudobulk/Volcano.KO vs WT Macrophages.pdf"), width=16, height=12)
 print(p)
+dev.off()
+
+
+
+### Plot for DEG in all clusters
+
+
+
+
+Ly6cHi_Monocytes[[2]]$cluster <- "Ly6cHi Monocytes"
+Ly6cLo_Monocytes[[2]]$cluster <- "Ly6cLo Monocytes"
+Early_IFN_MHCII_TAMs[[2]]$cluster <- "Early_IFN_MHCII_TAMs"
+Arg1_Spp1_Mmp12_Mmp19_Il1a_Mac[[2]]$cluster <- "Arg1|Spp1|Mmp12|Mmp19|Il1a Mac"
+Trem1_Ptgs2_Plaur_Celc4e_Mac[[2]]$cluster <- "Trem1|Ptgs2|Plaur|Celc4e Mac"
+MHCII_Ccl12_Mac[[2]]$cluster <- "MHCII|Ccl12 Mac"
+MHCII_Siglec_Mac[[2]]$cluster <- "MHCII|Siglec Mac"
+IFN_Mac[[2]]$cluster <- "IFN Mac"
+Mmp9_Ctsk_Mac[[2]]$cluster <- "Mmp9|Ctsk Mac"
+Mrc1_C1qc_Cbr2_Gas6_Mac[[2]]$cluster <- "Mrc1|C1qc|Cbr2|Gas6 Mac"
+Npr2_Actn1_Mac[[2]]$cluster <- "Npr2|Actn1 Mac"
+Fn1_Vegfa_Mac[[2]]$cluster <- "Fn1|Vegfa Mac"
+Neutrophils[[2]]$cluster <- "Neutrophils"
+
+
+# Join all dataframes
+all_clusters <- bind_rows(
+Ly6cHi_Monocytes[[2]],
+Ly6cLo_Monocytes[[2]],
+Early_IFN_MHCII_TAMs[[2]],
+Arg1_Spp1_Mmp12_Mmp19_Il1a_Mac[[2]],
+Trem1_Ptgs2_Plaur_Celc4e_Mac[[2]],
+MHCII_Ccl12_Mac[[2]],
+MHCII_Siglec_Mac[[2]],
+IFN_Mac[[2]],
+Mmp9_Ctsk_Mac[[2]],
+Mrc1_C1qc_Cbr2_Gas6_Mac[[2]],
+Npr2_Actn1_Mac[[2]],
+Fn1_Vegfa_Mac[[2]],
+Neutrophils[[2]],
+)
+
+
+
+nora.colors2 <- c(
+  "Ly6cHi Monocytes"     = "#FF0000",  # Rojo inflamatorio puro
+  "Ly6cLo Monocytes"     = "#FF6A6A",  # Rojo salmón transición
+  "Early IFN|MHCII-TAMs"       = "#B22222", 
+  "Trem1|Ptgs2|Plaur|Celc4e Mac"   = "#EE7942",
+  "Mrc1|C1qc|Cbr2|Gas6 Mac"        = "#FFD92F",
+  "Arg1|Spp1|Mmp12|Mmp19|Il1a Mac" = "#4DAF4A",
+  "Npr2|Actn1 Mac"                 = "#A6D854",
+  "Neutrophils"                    = "#4876FF",
+  "Mmp9|Ctsk Mac"                  = "#00723F",
+  "IFN Mac"                        = "#C080FF",
+  "Fn1|Vegfa Mac"                  = "#FFA500",
+  "MHCII|Siglec Mac"               = "#1E90FF",
+  "MHCII|Ccl12 Mac"                = "#4682B4"
+)
+
+
+
+
+# Reemplazar "_" por "|" y mapear a nora.colors
+nora_names <- names(nora.colors2)
+nora_clusters <- sapply(strsplit(nora_names, " "), `[`, 1)  # parte del cluster sin tipo de célula
+cluster_map <- setNames(nora_names, gsub("\\|", "_", nora_clusters))
+
+# Reemplazar los nombres en tu df
+all_clusters$cluster <- cluster_map[all_clusters$cluster]
+
+# Verificar que todos los clusters tengan mapeo
+all_clusters$cluster[is.na(all_clusters$cluster)]  # Estos serían los que no se mapean
+
+
+
+deg_shared <- all_clusters %>%
+  filter(diffexpressed %in% c("Up", "Down")) %>%
+  group_by(gene, diffexpressed) %>%
+  summarise(n_clusters = n_distinct(cluster), .groups = "drop") %>%
+  filter(n_clusters >= 3) %>%  # ≥3 clusters
+  arrange(desc(n_clusters))
+
+as.data.frame(deg_shared)
+
+
+
+library(ggplot2)
+library(dplyr)
+library(ggrepel)
+
+# Vector de genes a etiquetar
+genes_to_label <- c(
+  "Cxcl1","C1qc","Hexim1","Lgals1","Marcksl1","Nfkbia","Oas2","Ahnak","Cxcl9","Egr2",
+  "Ifit3","Ifit3b","Ifitm3","Il1a","Irf7","Ms4a4c","Ly6a","Stat2","Atp6v0a1","rp2",
+  "C3","Cxcl3","Per2","Atp5a1","Socs3","Abca9","Ehd1","Oas1g","H2-T24","Rtp4","Cxcl2",
+  "Timeless"
+)
+
+# Filtrar solo genes DE (Up/Down) que queremos etiquetar
+label_points <- all_clusters %>%
+  filter(gene %in% genes_to_label & diffexpressed %in% c("Up","Down"))
+
+# Suavizar colores rojo y azul
+color_up <- "#FF6666"   # tono más claro que rojo
+color_down <- "#6699FF" # tono más claro que azul
+
+
+cluster_levels <- levels(all_clusters$cluster)
+
+
+cluster_boxes <- data.frame(
+  cluster = cluster_levels,
+  xmin = seq_along(cluster_levels) - 0.4,  # mantener ancho actual
+  xmax = seq_along(cluster_levels) + 0.4,
+  ymin = -0.3,   # más alto
+  ymax = 0.3     # más alto
+)
+cluster_boxes$cluster <- factor(cluster_boxes$cluster, levels = cluster_levels)
+
+
+# Plot
+pdf(paste0(outdir, "/QC/Shared_genes_metric_plot_rects_final_labels.pdf"), width = 22, height = 14)
+
+ggplot(all_clusters, aes(x = cluster, y = metric)) +
+  # recuadros centrados en 0
+  geom_rect(data = cluster_boxes,
+            aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, fill = cluster),
+            inherit.aes = FALSE, alpha = 1) +
+  # todos los genes
+  geom_jitter(width = 0.25, alpha = 0.3, color = "grey") +
+  # genes Up/Down con color suavizado
+  geom_point(data = filter(all_clusters, diffexpressed %in% c("Up","Down")),
+             aes(x = cluster, y = metric, color = diffexpressed),
+             position = position_jitter(width = 0.25),
+             size = 2) +
+  scale_color_manual(values = c("Up" = color_up, "Down" = color_down)) +
+  scale_fill_manual(name = "Cluster", values = nora.colors2) +
+  # etiquetas con ggrepel
+  geom_text_repel(data = label_points,
+                  aes(label = gene, x = cluster, y = metric),
+                  size = 5,
+                  box.padding = 0.4,
+                  point.padding = 0.3,
+                  segment.size = 0.3,
+                  max.overlaps = Inf) +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    panel.grid = element_blank(),
+    legend.position = "right"
+  ) +
+  labs(
+    x = NULL,
+    y = "logFC * -log10(adj.P.Val)",
+    title = "KO vs WT samples by cluster. Differentially expressed genes"
+  )
+
+dev.off()
+
+
+
+
+library(dplyr)
+library(ggplot2)
+library(ggrepel)
+
+# --- Definir clusters de interés ---
+macro_clusters <- unique(all_clusters$cluster)  # o tu lista de clusters seleccionados
+n_top <- 10  # top N Up/Down por cluster
+
+# --- Preparar los datos ---
+all_clusters <- all_clusters %>%
+  mutate(
+    diffexpressed = ifelse(metric > 0, "Up", "Down"),
+    cluster = factor(cluster, levels = macro_clusters)
+  )
+
+# --- Seleccionar top 10 Up y 10 Down por cluster ---
+top_genes <- all_clusters %>%
+  filter(diffexpressed %in% c("Up","Down")) %>%
+  group_by(cluster, diffexpressed) %>%
+  slice_max(abs(metric), n = n_top) %>%
+  ungroup() %>%
+  mutate(color = ifelse(diffexpressed == "Up", "#FF6666", "#6699FF"))
+
+# --- Crear recuadros de color centrados en y = 0 ---
+cluster_boxes <- data.frame(
+  cluster = macro_clusters,
+  xmin = seq_along(macro_clusters) - 0.4,
+  xmax = seq_along(macro_clusters) + 0.4,
+  ymin = -0.15,
+  ymax = 0.15
+)
+cluster_boxes$cluster <- factor(cluster_boxes$cluster, levels = macro_clusters)
+cluster_boxes$fill <- nora.colors2[as.character(cluster_boxes$cluster)]
+
+# --- Plot ---
+png(paste0(outdir, "/Pseudobulk/Top_genes_per_cluster.png"), width = 2200, height = 1400)
+
+ggplot(all_clusters, aes(x = cluster, y = metric)) +
+  geom_rect(data = cluster_boxes,
+            aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, fill = cluster),
+            inherit.aes = FALSE, alpha = 0.8) +
+  geom_jitter(width = 0.25, alpha = 0.3, color = "grey") +
+  geom_point(data = top_genes,
+             aes(x = cluster, y = metric, color = color),
+             size = 3,
+             position = position_jitter(width = 0.25)) +
+  geom_text_repel(data = top_genes,
+                  aes(x = cluster, y = metric, label = gene),
+                  size = 4,
+                  max.overlaps = 60,
+                  force = 5,
+                  force_pull = 0.5,
+                  segment.size = 0.3,
+                  position = position_jitter(width = 0.25)) +
+  scale_color_identity(name = "Regulation", guide = "legend") +
+  scale_fill_manual(name = "Cluster",
+                    values = nora.colors2,
+                    breaks = macro_clusters) +
+  theme_minimal(base_size = 14) +
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        panel.grid = element_blank(),
+        legend.position = "right") +
+  labs(x = NULL,
+       y = "Differential Expression Score",
+       title = "Top 10 Up and 10 Down genes per cluster")
+
 dev.off()
 
