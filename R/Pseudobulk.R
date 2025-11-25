@@ -60,6 +60,9 @@ Ly6cHi_Monocytes[[1]]
 head(Ly6cHi_Monocytes[[2]], n=50)
 Ly6cHi_Monocytes[[3]]
 Ly6cHi_Monocytes[[4]]
+Ly6cHi_Monocytes[[7]]
+
+
 
 
 # Ly6cLo_Monocytes
@@ -69,6 +72,8 @@ Ly6cLo_Monocytes[[1]]
 head(Ly6cLo_Monocytes[[2]], n=50)
 Ly6cLo_Monocytes[[3]]
 Ly6cLo_Monocytes[[4]]
+Ly6cLo_Monocytes[[7]]
+
 
 
 
@@ -79,6 +84,7 @@ Early_IFN_MHCII_TAMs[[1]]
 head(Early_IFN_MHCII_TAMs[[2]], n=50)
 Early_IFN_MHCII_TAMs[[3]]
 Early_IFN_MHCII_TAMs[[4]]
+Early_IFN_MHCII_TAMs[[7]]
 
 # Arg1|Spp1|Mmp12|Mmp19|Il1a Mac
 Arg1_Spp1_Mmp12_Mmp19_Il1a_Mac <- run_pseudobulk_analysis(data, "Arg1|Spp1|Mmp12|Mmp19|Il1a Mac", outdir, rsdir)
@@ -86,6 +92,7 @@ Arg1_Spp1_Mmp12_Mmp19_Il1a_Mac[[1]]
 head(Arg1_Spp1_Mmp12_Mmp19_Il1a_Mac[[2]], n=50)
 Arg1_Spp1_Mmp12_Mmp19_Il1a_Mac[[3]]
 Arg1_Spp1_Mmp12_Mmp19_Il1a_Mac[[4]]
+Arg1_Spp1_Mmp12_Mmp19_Il1a_Mac[[7]]
 
 # Trem1|Ptgs2|Plaur|Celc4e Mac
 Trem1_Ptgs2_Plaur_Celc4e_Mac <- run_pseudobulk_analysis(data, "Trem1|Ptgs2|Plaur|Celc4e Mac", outdir, rsdir)    
@@ -93,6 +100,7 @@ Trem1_Ptgs2_Plaur_Celc4e_Mac[[1]]
 head(Trem1_Ptgs2_Plaur_Celc4e_Mac[[2]], n=50)
 Trem1_Ptgs2_Plaur_Celc4e_Mac[[3]]
 Trem1_Ptgs2_Plaur_Celc4e_Mac[[4]]
+Trem1_Ptgs2_Plaur_Celc4e_Mac[[7]]
 
 # MHCII|Ccl12 Mac
 MHCII_Ccl12_Mac <- run_pseudobulk_analysis(data, "MHCII|Ccl12 Mac", outdir, rsdir)
@@ -100,6 +108,7 @@ MHCII_Ccl12_Mac[[1]]
 head(MHCII_Ccl12_Mac[[2]], n=50)
 MHCII_Ccl12_Mac[[3]]
 MHCII_Ccl12_Mac[[4]]
+MHCII_Ccl12_Mac[[7]]
 
 
 # MHCII|Siglec Mac
@@ -108,6 +117,7 @@ MHCII_Siglec_Mac[[1]]
 head(MHCII_Siglec_Mac[[2]], n=50)
 MHCII_Siglec_Mac[[3]]
 MHCII_Siglec_Mac[[4]]
+MHCII_Siglec_Mac[[7]]
 
 # IFN Mac
 IFN_Mac <- run_pseudobulk_analysis(data, "IFN Mac", outdir, rsdir)
@@ -115,6 +125,7 @@ IFN_Mac[[1]]
 head(IFN_Mac[[2]], n=50)
 IFN_Mac[[3]]
 IFN_Mac[[4]]
+IFN_Mac[[7]]
 
 # Mmp9|Ctsk Mac
 Mmp9_Ctsk_Mac <- run_pseudobulk_analysis(data, "Mmp9|Ctsk Mac", outdir, rsdir)
@@ -122,6 +133,8 @@ Mmp9_Ctsk_Mac[[1]]
 head(Mmp9_Ctsk_Mac[[2]], n=50)
 Mmp9_Ctsk_Mac[[3]]
 Mmp9_Ctsk_Mac[[4]]
+Mmp9_Ctsk_Mac[[7]]
+
 
 # Mrc1|C1qc|Cbr2|Gas6 Mac
 Mrc1_C1qc_Cbr2_Gas6_Mac <- run_pseudobulk_analysis(data, "Mrc1|C1qc|Cbr2|Gas6 Mac", outdir, rsdir)
@@ -129,6 +142,7 @@ Mrc1_C1qc_Cbr2_Gas6_Mac[[1]]
 head(Mrc1_C1qc_Cbr2_Gas6_Mac[[2]], n=50)
 Mrc1_C1qc_Cbr2_Gas6_Mac[[3]]
 Mrc1_C1qc_Cbr2_Gas6_Mac[[4]]
+Mrc1_C1qc_Cbr2_Gas6_Mac[[7]]
 
 # Npr2|Actn1 Mac
 Npr2_Actn1_Mac <- run_pseudobulk_analysis(data, "Npr2|Actn1 Mac", outdir, rsdir)
@@ -136,6 +150,7 @@ Npr2_Actn1_Mac[[1]]
 head(Npr2_Actn1_Mac[[2]], n=50)
 Npr2_Actn1_Mac[[3]]
 Npr2_Actn1_Mac[[4]]
+Npr2_Actn1_Mac[[7]]
 
 # Fn1|Vegfa Mac
 Fn1_Vegfa_Mac <- run_pseudobulk_analysis(data, "Fn1|Vegfa Mac", outdir, rsdir)
@@ -143,6 +158,7 @@ Fn1_Vegfa_Mac[[1]]
 head(Fn1_Vegfa_Mac[[2]], n=50)
 Fn1_Vegfa_Mac[[3]]
 Fn1_Vegfa_Mac[[4]]
+Fn1_Vegfa_Mac[[7]]
 
 # Neutrophils
 Neutrophils <- run_pseudobulk_analysis(data, "Neutrophils", outdir, rsdir)
@@ -150,6 +166,44 @@ Neutrophils[[1]]
 head(Neutrophils[[2]], n=50)
 Neutrophils[[3]]
 Neutrophils[[4]]
+Neutrophils[[7]]
+
+
+
+# Save tables
+write.table(Ly6cHi_Monocytes[[2]], paste0(rsdir,"table.macros.Ly6cHi Monocytes.tsv"), sep='\t')
+write.table(Ly6cLo_Monocytes[[2]], paste0(rsdir,"table.macros.Ly6cLo Monocytes.tsv"), sep='\t')
+write.table(Early_IFN_MHCII_TAMs[[2]], paste0(rsdir,"table.macros.Early IFN MHCII TAMs.tsv"), sep='\t')
+write.table(Arg1_Spp1_Mmp12_Mmp19_Il1a_Mac[[2]], paste0(rsdir,"table.macros.Arg1 Spp1 Mmp12 Mmp19 Il1a Mac.tsv"), sep='\t')
+write.table(Trem1_Ptgs2_Plaur_Celc4e_Mac[[2]], paste0(rsdir,"table.macros.Trem1 Ptgs2 Plaur Celc4e Mac.tsv"), sep='\t')
+write.table(MHCII_Ccl12_Mac[[2]], paste0(rsdir,"table.macros.MHCII Ccl12 Mac.tsv"), sep='\t')
+write.table(MHCII_Siglec_Mac[[2]], paste0(rsdir,"table.macros.MHCII Siglec Mac.tsv"), sep='\t')
+write.table(IFN_Mac[[2]], paste0(rsdir,"table.macros.IFN Mac.tsv"), sep='\t')
+write.table(Mmp9_Ctsk_Mac[[2]], paste0(rsdir,"table.macros.Mmp9 Ctsk Mac.tsv"), sep='\t')
+write.table(Mrc1_C1qc_Cbr2_Gas6_Mac[[2]], paste0(rsdir,"table.macros.Mrc1 C1qc Cbr2 Gas6 Mac.tsv"), sep='\t')
+write.table(Npr2_Actn1_Mac[[2]], paste0(rsdir,"table.macros.Npr2 Actn1 Mac.tsv"), sep='\t')
+write.table(Fn1_Vegfa_Mac[[2]], paste0(rsdir,"table.macros.Fn1 Vegfa Mac.tsv"), sep='\t')
+write.table(Neutrophils[[2]], paste0(rsdir,"table.macros.Neutrophils.tsv"), sep='\t')      
+
+
+
+
+
+
+
+write.table(Ly6cHi_Monocytes[[7]], paste0(rsdir,"matrix.macros.Ly6cHi Monocytes.tsv"), sep='\t')
+write.table(Ly6cLo_Monocytes[[7]], paste0(rsdir,"matrix.macros.Ly6cLo Monocytes.tsv"), sep='\t')
+write.table(Early_IFN_MHCII_TAMs[[7]], paste0(rsdir,"matrix.macros.Early IFN MHCII TAMs.tsv"), sep='\t')
+write.table(Arg1_Spp1_Mmp12_Mmp19_Il1a_Mac[[7]], paste0(rsdir,"matrix.macros.Arg1 Spp1 Mmp12 Mmp19 Il1a Mac.tsv"), sep='\t')
+write.table(Trem1_Ptgs2_Plaur_Celc4e_Mac[[7]], paste0(rsdir,"matrix.macros.Trem1 Ptgs2 Plaur Celc4e Mac.tsv"), sep='\t')
+write.table(MHCII_Ccl12_Mac[[7]], paste0(rsdir,"matrix.macros.MHCII Ccl12 Mac.tsv"), sep='\t')
+write.table(MHCII_Siglec_Mac[[7]], paste0(rsdir,"matrix.macros.MHCII Siglec Mac.tsv"), sep='\t')
+write.table(IFN_Mac[[7]], paste0(rsdir,"matrix.macros.IFN Mac.tsv"), sep='\t')
+write.table(Mmp9_Ctsk_Mac[[7]], paste0(rsdir,"matrix.macros.Mmp9 Ctsk Mac.tsv"), sep='\t')
+write.table(Mrc1_C1qc_Cbr2_Gas6_Mac[[7]], paste0(rsdir,"matrix.macros.Mrc1 C1qc Cbr2 Gas6 Mac.tsv"), sep='\t')
+write.table(Npr2_Actn1_Mac[[7]], paste0(rsdir,"matrix.macros.Npr2 Actn1 Mac.tsv"), sep='\t')
+write.table(Fn1_Vegfa_Mac[[7]], paste0(rsdir,"matrix.macros.Fn1 Vegfa Mac.tsv"), sep='\t')
+write.table(Neutrophils[[7]], paste0(rsdir,"matrix.macros.Neutrophils.tsv"), sep='\t')      
 
 
 
@@ -368,89 +422,121 @@ nora.colors2 <- c(
 
 
 
-# Reemplazar "_" por "|" y mapear a nora.colors
-nora_names <- names(nora.colors2)
-nora_clusters <- sapply(strsplit(nora_names, " "), `[`, 1)  # parte del cluster sin tipo de célula
-cluster_map <- setNames(nora_names, gsub("\\|", "_", nora_clusters))
-
-# Reemplazar los nombres en tu df
-all_clusters$cluster <- cluster_map[all_clusters$cluster]
-
-# Verificar que todos los clusters tengan mapeo
-all_clusters$cluster[is.na(all_clusters$cluster)]  # Estos serían los que no se mapean
+# --- Definir epsilon por si acaso hay NA ---
+epsilon <- 1e-8
 
 
-
-deg_shared <- all_clusters %>%
-  filter(diffexpressed %in% c("Up", "Down")) %>%
-  group_by(gene, diffexpressed) %>%
-  summarise(n_clusters = n_distinct(cluster), .groups = "drop") %>%
-  filter(n_clusters >= 3) %>%  # ≥3 clusters
-  arrange(desc(n_clusters))
-
-as.data.frame(deg_shared)
+all_clusters <- all_clusters %>%
+  mutate(cluster = case_when(
+    cluster == "Early_IFN_MHCII_TAMs" ~ "Early IFN|MHCII-TAMs",
+    TRUE ~ cluster
+  ))
 
 
+# --- Preparar los datos ---
+markers_macro <- all_clusters %>%
+  filter(cluster %in% macro_clusters) %>%        # filtrar clusters de interés
+  mutate(
+    # NUEVA MÉTRICA: logFC ponderado por especificidad (% diferencia)
+    metric = logFC * -log10(adj.P.Val + epsilon),
+    cluster = factor(cluster, levels = macro_clusters)
+    )  # mantener orden
+  
 
-library(ggplot2)
-library(dplyr)
-library(ggrepel)
+# ============================
+# 2. SELECCIONAR TOP 10 ↑ Y 10 ↓ POR CLUSTER
+# ============================
 
-# Vector de genes a etiquetar
-genes_to_label <- c(
-  "Cxcl1","C1qc","Hexim1","Lgals1","Marcksl1","Nfkbia","Oas2","Ahnak","Cxcl9","Egr2",
-  "Ifit3","Ifit3b","Ifitm3","Il1a","Irf7","Ms4a4c","Ly6a","Stat2","Atp6v0a1","rp2",
-  "C3","Cxcl3","Per2","Atp5a1","Socs3","Abca9","Ehd1","Oas1g","H2-T24","Rtp4","Cxcl2",
-  "Timeless"
+
+
+# --- Filtrar solo genes diferencialmente expresados ---
+markers_macro_filtered <- markers_macro %>%
+  filter(diffexpressed %in% c("Up","Down")) %>%
+  group_by(cluster, gene) %>%
+  slice_max(order_by = abs(metric), n = 1) %>%   # nos quedamos con la fila "más significativa"
+  ungroup()
+
+
+# --- Selección de top genes por cluster ---
+# --- Selección de top genes por cluster (10 Up + 10 Down sin duplicados) ---
+top_genes2 <- markers_macro_filtered %>%
+  group_by(cluster) %>%
+  # top 10 Up
+  filter(diffexpressed == "Up") %>%
+  slice_max(metric, n = 10, with_ties = FALSE) %>%
+  ungroup() %>%
+  bind_rows(
+    markers_macro_filtered %>%
+      group_by(cluster) %>%
+      # top 10 Down
+      filter(diffexpressed == "Down") %>%
+      slice_min(metric, n = 10, with_ties = FALSE) %>%
+      ungroup()
+  ) %>%
+  mutate(
+    color = ifelse(diffexpressed == "Up", "red", "blue")
+  )
+  
+  top_genes2 <- as.data.frame(top_genes2)
+
+# ============================
+# 3. CAJAS DE COLOR BAJO CADA CLUSTER
+# ============================
+
+clusters2 <- macro_clusters
+
+
+cluster_boxes2 <- data.frame(
+  cluster = clusters2,
+  xmin = seq_along(clusters2) - 0.4,
+  xmax = seq_along(clusters2) + 0.4,
+  ymin = -0.15,
+  ymax = 0.15
 )
 
-# Filtrar solo genes DE (Up/Down) que queremos etiquetar
-label_points <- all_clusters %>%
-  filter(gene %in% genes_to_label & diffexpressed %in% c("Up","Down"))
+cluster_boxes2$cluster <- factor(cluster_boxes2$cluster, levels = clusters2)
+cluster_boxes2$fill <- nora.colors2[as.character(cluster_boxes2$cluster)]
 
-# Suavizar colores rojo y azul
-color_up <- "#FF6666"   # tono más claro que rojo
-color_down <- "#6699FF" # tono más claro que azul
-
-
-cluster_levels <- levels(all_clusters$cluster)
+# ============================
+# 4. PLOT FINAL
+# ============================
 
 
-cluster_boxes <- data.frame(
-  cluster = cluster_levels,
-  xmin = seq_along(cluster_levels) - 0.4,  # mantener ancho actual
-  xmax = seq_along(cluster_levels) + 0.4,
-  ymin = -0.3,   # más alto
-  ymax = 0.3     # más alto
-)
-cluster_boxes$cluster <- factor(cluster_boxes$cluster, levels = cluster_levels)
 
+pdf(paste0(outdir, "/Pseudobulk/KOvsWT.DEGs.All_clusters.pdf"), width = 26, height = 14)
 
-# Plot
-pdf(paste0(outdir, "/QC/Shared_genes_metric_plot_rects_final_labels.pdf"), width = 22, height = 14)
+ggplot(markers_macro, aes(x = cluster, y = metric)) +
 
-ggplot(all_clusters, aes(x = cluster, y = metric)) +
-  # recuadros centrados en 0
-  geom_rect(data = cluster_boxes,
+  # cajas de color
+  geom_rect(data = cluster_boxes2,
             aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, fill = cluster),
-            inherit.aes = FALSE, alpha = 1) +
-  # todos los genes
-  geom_jitter(width = 0.25, alpha = 0.3, color = "grey") +
-  # genes Up/Down con color suavizado
-  geom_point(data = filter(all_clusters, diffexpressed %in% c("Up","Down")),
-             aes(x = cluster, y = metric, color = diffexpressed),
-             position = position_jitter(width = 0.25),
-             size = 2) +
-  scale_color_manual(values = c("Up" = color_up, "Down" = color_down)) +
-  scale_fill_manual(name = "Cluster", values = nora.colors2) +
-  # etiquetas con ggrepel
-  geom_text_repel(data = label_points,
-                  aes(label = gene, x = cluster, y = metric),
-                  size = 5,
-                  box.padding = 0.4,
-                  point.padding = 0.3,
-                  segment.size = 0.3,
-                  max.overlaps = Inf) +
+            inherit.aes = FALSE, alpha = 0.8) +
+
+  # todos los puntos
+  geom_jitter(width = 0.25, alpha = 0.4, color = "grey") +
+
+  # top genes
+  geom_point(
+    data = top_genes2,
+    aes(x = cluster, y = metric, color = diffexpressed),
+    size = 2,
+    position = position_jitter(width = 0.25)
+  ) +
+
+  # labels de top genes
+  geom_text_repel(
+    data = top_genes2,
+    aes(x = cluster, y = metric, label = gene),
+    size = 4,
+    max.overlaps = 60,
+    segment.size = 0.3,
+    position = position_jitter(width = 0.25)
+  ) +
+
+  # definir colores para Up y Down
+  scale_color_manual(name = "Regulation", values = c("Up" = "red", "Down" = "blue")) +
+  scale_fill_manual(values = nora.colors2) +
+
   theme_minimal(base_size = 14) +
   theme(
     axis.text.x = element_blank(),
@@ -458,83 +544,12 @@ ggplot(all_clusters, aes(x = cluster, y = metric)) +
     panel.grid = element_blank(),
     legend.position = "right"
   ) +
+
   labs(
     x = NULL,
     y = "logFC * -log10(adj.P.Val)",
-    title = "KO vs WT samples by cluster. Differentially expressed genes"
+    title = "KO vs WT Chimeras. Top differentially expressed genes per cluster (limma DE)"
   )
-
-dev.off()
-
-
-
-
-library(dplyr)
-library(ggplot2)
-library(ggrepel)
-
-# --- Definir clusters de interés ---
-macro_clusters <- unique(all_clusters$cluster)  # o tu lista de clusters seleccionados
-n_top <- 10  # top N Up/Down por cluster
-
-# --- Preparar los datos ---
-all_clusters <- all_clusters %>%
-  mutate(
-    diffexpressed = ifelse(metric > 0, "Up", "Down"),
-    cluster = factor(cluster, levels = macro_clusters)
-  )
-
-# --- Seleccionar top 10 Up y 10 Down por cluster ---
-top_genes <- all_clusters %>%
-  filter(diffexpressed %in% c("Up","Down")) %>%
-  group_by(cluster, diffexpressed) %>%
-  slice_max(abs(metric), n = n_top) %>%
-  ungroup() %>%
-  mutate(color = ifelse(diffexpressed == "Up", "#FF6666", "#6699FF"))
-
-# --- Crear recuadros de color centrados en y = 0 ---
-cluster_boxes <- data.frame(
-  cluster = macro_clusters,
-  xmin = seq_along(macro_clusters) - 0.4,
-  xmax = seq_along(macro_clusters) + 0.4,
-  ymin = -0.15,
-  ymax = 0.15
-)
-cluster_boxes$cluster <- factor(cluster_boxes$cluster, levels = macro_clusters)
-cluster_boxes$fill <- nora.colors2[as.character(cluster_boxes$cluster)]
-
-# --- Plot ---
-png(paste0(outdir, "/Pseudobulk/Top_genes_per_cluster.png"), width = 2200, height = 1400)
-
-ggplot(all_clusters, aes(x = cluster, y = metric)) +
-  geom_rect(data = cluster_boxes,
-            aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, fill = cluster),
-            inherit.aes = FALSE, alpha = 0.8) +
-  geom_jitter(width = 0.25, alpha = 0.3, color = "grey") +
-  geom_point(data = top_genes,
-             aes(x = cluster, y = metric, color = color),
-             size = 3,
-             position = position_jitter(width = 0.25)) +
-  geom_text_repel(data = top_genes,
-                  aes(x = cluster, y = metric, label = gene),
-                  size = 4,
-                  max.overlaps = 60,
-                  force = 5,
-                  force_pull = 0.5,
-                  segment.size = 0.3,
-                  position = position_jitter(width = 0.25)) +
-  scale_color_identity(name = "Regulation", guide = "legend") +
-  scale_fill_manual(name = "Cluster",
-                    values = nora.colors2,
-                    breaks = macro_clusters) +
-  theme_minimal(base_size = 14) +
-  theme(axis.text.x = element_blank(),
-        axis.ticks.x = element_blank(),
-        panel.grid = element_blank(),
-        legend.position = "right") +
-  labs(x = NULL,
-       y = "Differential Expression Score",
-       title = "Top 10 Up and 10 Down genes per cluster")
 
 dev.off()
 

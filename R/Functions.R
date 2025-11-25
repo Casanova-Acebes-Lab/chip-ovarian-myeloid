@@ -213,7 +213,8 @@ GSEA <- function(data) {
   data$adj.P.Val[data$adj.P.Val == 0] <- epsilon
   
   # Calcular la métrica de ranking
-  data$metric <- sign(data$logFC) * -log10(data$P.Value)
+  data$metric <- data$logFC * -log10(data$adj.P.Val + 1e-8)
+
   
   # Ordenar por la métrica de ranking
   data <- data[order(data$metric, decreasing = TRUE), ]
@@ -226,17 +227,17 @@ GSEA <- function(data) {
   gseGO_result <- gseGO(geneList = gene_metric,
                         ont = "BP",
                         OrgDb = org.Mm.eg.db,
-                        minGSSize = 50,
+                        minGSSize = 150,
                         maxGSSize = 500,
                         eps = 1e-20,
                         nPermSimple = 10000,
                         pAdjustMethod = "BH",
-                        pvalueCutoff = 0.005,
+                        pvalueCutoff = 0.05,
                         verbose = FALSE)
   
   # Simplificar GO (eliminar términos redundantes)
   gseGO_result <- simplify(gseGO_result,
-                           cutoff = 0.7,
+                           cutoff = 0.9,
                            by = "p.adjust",
                            select_fun = min)
   
@@ -370,6 +371,7 @@ pseudobulk_cluster <- function(seurat_obj, cluster_name, cluster_col="Clustering
   
   # counts per sample
   pb_mat <- t(aggregate.Matrix(t(counts), groupings=samples, fun="sum"))
+
   
   # cells per sample
   n_cells <- table(samples)
@@ -469,19 +471,20 @@ Volcano2 <- function(data, legend, logFC_threshold = 0.5) {
 
 
 run_pseudobulk_analysis <- function(data, cluster_name, outdir, rsdir) {
-  # Ejecutar pseudobulk para un cluster específico
+  # On a cluster basis, create pseudobulk matrix
   res <- pseudobulk_cluster(data, cluster_name = cluster_name)
   pb_mat <- res$pb_mat
   n_cells <- res$n_cells
   n_counts <- res$n_counts
-
-  # Crear metadatos
+  
+  
+  # Metadata
   sample_meta <- make_sample_metadata(colnames(pb_mat))
 
-  # Ejecutar limma
+  # Run limma
   res_limma <- run_limma_cluster(pb_mat, sample_meta, n_cells)
 
-  # Clasificación de genes diferencialmente expresados
+  # DEG classification
   res_limma$diffexpressed <- "NO"
   res_limma$diffexpressed[res_limma$adj.P.Val < 0.05 & res_limma$logFC > 0.5] <- "Up"
   res_limma$diffexpressed[res_limma$adj.P.Val < 0.05 & res_limma$logFC < -0.5] <- "Down"
@@ -492,7 +495,7 @@ run_pseudobulk_analysis <- function(data, cluster_name, outdir, rsdir) {
     slice_head(n = 50) %>%
     as.data.frame()
 
-  # Guardar tabla completa
+  # Output table
   write.table(
     res_limma,
     file = paste0(rsdir, "/table.macros.", cluster_name, ".tsv"),
@@ -501,22 +504,23 @@ run_pseudobulk_analysis <- function(data, cluster_name, outdir, rsdir) {
     row.names = FALSE
   )
 
-  # Crear Volcano plot
+  # Volcano plot
   p <- Volcano2(data = res_limma, legend = paste0("KO vs WT samples. ", cluster_name))
 
-  # Guardar el plot en PDF
+  # PDF
   pdf(paste0(outdir, "/Pseudobulk/Volcano.KO_vs_WT_", cluster_name, ".pdf"),
       width = 16, height = 12)
   print(p)
   dev.off()
 
-  # Devolver resultados
+  # Return results
   return(list(
     cluster = cluster_name,
     res_limma = res_limma,
     top_genes = top_genes,
     n_cells = n_cells,
     n_counts = n_counts,
-    plot = p
+    plot = p,
+    matrix = pb_mat 
   ))
 }

@@ -35,16 +35,21 @@ source("R/Functions.R")
 ########### Read data
 
 
-cluster.Arg1 <- read.table(paste0(rsdir,"table.macros.Arg1+ Mac.tsv"), sep='\t', header=T)
-cluster.Mrc1 <- read.table(paste0(rsdir,"table.macros.Mrc1+ Mac.tsv"), sep='\t', header=T)
-cluster.Mki67 <- read.table(paste0(rsdir,"table.macros.Mki67+ Mac.tsv"), sep='\t', header=T)
-cluster.Mmp9 <- read.table(paste0(rsdir,"table.macros.Mmp9+ Mac.tsv"), sep='\t', header=T)
-cluster.Gpnmb <- read.table(paste0(rsdir,"table.macros.Gpnmb+ Mac.tsv"), sep='\t', header=T)
-cluster.Arg1.Mrc1 <- read.table(paste0(rsdir,"table.macros.Arg1|Mrc1 Mac.tsv"), sep='\t', header=T)
-cluster.Ciita.Mrc1.MHCII <- read.table(paste0(rsdir,"table.macros.Ciita|Mrc1|MHC-II Mac.tsv"), sep='\t', header=T)
-cluster.Monocytes.Ly6c2Hi <- read.table(paste0(rsdir,"table.macros.Monocytes Ly6c2Hi.tsv"), sep='\t', header=T)
-cluster.IFN <- read.table(paste0(rsdir,"table.macros.IFN Mac.tsv"), sep='\t', header=T)
-cluster.Neutrophils <- read.table(paste0(rsdir,"table.macros.Neutrophils.tsv"), sep='\t', header=T)
+# --- Cargar tablas definidas abajo ---
+
+cluster.Ly6cHi_Monocytes      <- read.table(paste0(rsdir, "table.macros.Ly6cHi Monocytes.tsv"),sep = '\t', header = TRUE)
+cluster.Ly6cLo_Monocytes      <- read.table(paste0(rsdir, "table.macros.Ly6cLo Monocytes.tsv"),sep = '\t', header = TRUE)
+cluster.Early_IFN_MHCII_TAMs  <- read.table(paste0(rsdir, "table.macros.Early IFN MHCII TAMs.tsv"),sep = '\t', header = TRUE)
+cluster.Arg1_Spp1_Mmp12_Mmp19_Il1a_Mac <- read.table(paste0(rsdir, "table.macros.Arg1 Spp1 Mmp12 Mmp19 Il1a Mac.tsv"),sep = '\t', header = TRUE)
+cluster.Trem1_Ptgs2_Plaur_Celc4e_Mac <- read.table(paste0(rsdir, "table.macros.Trem1 Ptgs2 Plaur Celc4e Mac.tsv"),sep = '\t', header = TRUE)
+cluster.MHCII_Ccl12_Mac      <- read.table(paste0(rsdir, "table.macros.MHCII Ccl12 Mac.tsv"),sep = '\t', header = TRUE)
+cluster.MHCII_Siglec_Mac     <- read.table(paste0(rsdir, "table.macros.MHCII Siglec Mac.tsv"),sep = '\t', header = TRUE)
+cluster.IFN_Mac              <- read.table(paste0(rsdir, "table.macros.IFN Mac.tsv"),sep = '\t', header = TRUE)
+cluster.Mmp9_Ctsk_Mac        <- read.table(paste0(rsdir, "table.macros.Mmp9 Ctsk Mac.tsv"),sep = '\t', header = TRUE)
+cluster.Mrc1_C1qc_Cbr2_Gas6_Mac <- read.table(paste0(rsdir, "table.macros.Mrc1 C1qc Cbr2 Gas6 Mac.tsv"),sep = '\t', header = TRUE)
+cluster.Npr2_Actn1_Mac       <- read.table(paste0(rsdir, "table.macros.Npr2 Actn1 Mac.tsv"),sep = '\t', header = TRUE)
+cluster.Fn1_Vegfa_Mac        <- read.table(paste0(rsdir, "table.macros.Fn1 Vegfa Mac.tsv"),sep = '\t', header = TRUE)
+cluster.Neutrophils          <- read.table(paste0(rsdir, "table.macros.Neutrophils.tsv"),sep = '\t', header = TRUE)
 cluster.ALL <- read.table(paste0(rsdir,"table.macros.ALL Mac.tsv"), sep='\t', header=T)
 
 
@@ -55,29 +60,34 @@ cluster.ALL <- read.table(paste0(rsdir,"table.macros.ALL Mac.tsv"), sep='\t', he
 
 
 
-GSEA.Arg1 <- GSEA(cluster.Arg1)
+GSEA.Ly6cHi <- GSEA(cluster.Ly6cHi_Monocytes)
+head(GSEA.Ly6cHi[,c(1:6)],n=20)
+dim(GSEA.Ly6cHi)
+
+
+GSEA.Ly6cLo <- GSEA(cluster.Ly6cLo_Monocytes)
+head(GSEA.Ly6cLo[,c(1:6)],n=20)
+dim(GSEA.Ly6cLo)
+
+
+GSEA.IFN_MHCII <- GSEA(cluster.Early_IFN_MHCII_TAMs)
+head(GSEA.IFN_MHCII,n=20)
+dim(GSEA.IFN_MHCII)
+
+
+GSEA.Arg1 <- GSEA(cluster.Arg1_Spp1_Mmp12_Mmp19_Il1a_Mac)
 head(GSEA.Arg1,n=20)
+dim(GSEA.Arg1)
 
 
-GSEA.Mrc1 <- GSEA(cluster.Mrc1)
-head(GSEA.Mrc1,n=20)
+GSEA.Trem1 <- GSEA(cluster.Trem1_Ptgs2_Plaur_Celc4e_Mac)
+head(GSEA.Trem1,n=20)
+dim(GSEA.Trem1)
 
 
-GSEA.Mki67 <- GSEA(cluster.Mki67)
-head(GSEA.Mki67,n=20)
-
-
-GSEA.Mmp9 <- GSEA(cluster.Mmp9)
-head(GSEA.Mmp9,n=20)
-
-
-GSEA.Gpnmb <- GSEA(cluster.Gpnmb)
-head(GSEA.Gpnmb,n=20)
-
-
-
-GSEA.Arg1.Mrc1 <- GSEA(cluster.Arg1.Mrc1)
-head(GSEA.Arg1.Mrc1,n=20)
+GSEA.MHCII_Ccl12 <- GSEA(cluster.MHCII_Ccl12_Mac)
+head(GSEA.MHCII_Ccl12,n=20)
+dim(GSEA.MHCII_Ccl12)
 
 
 GSEA.Ciita.Mrc1.MHCII <- GSEA(cluster.Ciita.Mrc1.MHCII)
@@ -611,3 +621,48 @@ pdf(paste0(outdir, "/GSEA/Top10_GO_terms_by_cluster_heatmap.pdf"), width = 26, h
 print(p_heatmap)
 dev.off()
 
+
+
+
+### Enrichment for KO vs WT results
+
+
+library(clusterProfiler)
+library(org.Mm.eg.db)
+library(dplyr)
+
+prepare_DEG_list <- function(df, padj_cutoff = 0.05, logFC_cutoff = 1) {
+  
+  df <- df %>% filter(adj.P.Val < padj_cutoff & abs(logFC) > logFC_cutoff)
+
+  entrez <- mapIds(
+    org.Mm.eg.db,
+    keys = df$gene,
+    keytype = "SYMBOL",
+    column = "ENTREZID",
+    multiVals = "first"
+  )
+
+  entrez <- na.omit(entrez)
+  entrez <- unique(entrez)
+
+  return(entrez)
+}
+
+run_GO_enrichment <- function(entrez_vec) {
+  enrichGO(
+    gene = entrez_vec,
+    OrgDb = org.Mm.eg.db,
+    keyType = "ENTREZID",
+    ont = "BP",
+    pAdjustMethod = "BH",
+    pvalueCutoff = 0.05,
+    qvalueCutoff = 0.05,
+    readable = TRUE
+  )
+}
+
+
+
+deg_entrez <- prepare_DEG_list(cluster.Ly6cHi_Monocytes)
+enrichment_results <-run_GO_enrichment(deg_entrez)

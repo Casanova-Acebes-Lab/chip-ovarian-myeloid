@@ -144,6 +144,40 @@ dev.off()
 
 
 
+interferon_genes_20 <- c(
+  # Señalización y receptores
+  "Ifna2", "Oas1a", "Oas2", "Oas3",
+  
+  # Factores reguladores de IFN
+  "Irf7", "Irf9",
+  
+  # ISGs potentes
+  "Isg15", "Mx1", "Ifit1", "Ifit3",
+  "Rsad2", "Oas1a", "Oas2", "Oas3",
+  
+  # Antiviral / inmunoproteasoma
+  "Bst2", "Zbp1", "Cxcl10",
+  
+  # Sensores antivirales
+  "Ddx58",   # RIG-I
+  "Ifih1"    # MDA5
+)
+
+
+pdf(paste0(outdir, "/Analysis/violin.IFN.pdf"), width = 36, height = 24)
+
+VlnPlot(
+  object = data_downsampled,
+  features = interferon_genes_20,
+  group.by = "Clustering.Round2",
+  cols = nora.colors,
+  pt.size = 0, split.by = "group"
+)
+dev.off()
+
+
+
+
 ## DEG
 
 
@@ -654,7 +688,7 @@ markers_macro <- clusters %>%
 # --- Seleccionar primeros 10 UP y 10 DOWN según orden original ---
 top_genes <- markers_macro %>%
   group_by(cluster, diffexpressed) %>%
-  slice_head(n = 10) %>%
+  slice_max(order_by = abs(metric), n = 10) %>%
   ungroup() %>%
   mutate(color = ifelse(diffexpressed == "Up", "red", "blue"))
 
@@ -672,7 +706,7 @@ cluster_boxes$fill <- nora.colors[as.character(cluster_boxes$cluster)]
 # --- Plot principal ---
 yvar <- "metric"   # usamos la nueva métrica\
 
-png(paste0(outdir, "/Analysis/Top_genes_metric_pctdiff_clean.png"), width = 2200, height = 1400)
+pdf(paste0(outdir, "/Analysis/Top_genes_metric_pctdiff_clean.pdf"), width = 22, height = 14)
 
 ggplot(markers_macro, aes(x = cluster, y = !!sym(yvar))) +
   geom_rect(data = cluster_boxes,
@@ -713,6 +747,7 @@ ggplot(markers_macro, aes(x = cluster, y = !!sym(yvar))) +
   )
 
 dev.off()
+
 
 
 
