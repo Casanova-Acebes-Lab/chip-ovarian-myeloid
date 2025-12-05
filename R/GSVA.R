@@ -9,6 +9,8 @@ library(pheatmap)
 library(msigdbr)
 library(RColorBrewer)
 library(matrixStats)
+library(grid)
+
 
 
 
@@ -343,6 +345,122 @@ plot_gsva_cluster <- function(cl, cluster_file) {
 
 
 
+plot_gsva_cluster <- function(cl, cluster_file) {
+
+  message("Procesando cluster: ", cl)
+
+  # -------------------------------
+  # Parámetros fijos
+  # -------------------------------
+  min_genes <- 30
+  max_genes <- 500
+  top_n <- 40
+  exclude_keywords <- c(
+    "neuro", "axon", "brain", "neuronal", "synapse",
+    "muscle", "myocyte", "cardiac", "heart",
+    "eye", "retina", "lens",
+    "spinal", "fear", "light"
+  )
+  rdbu_pal <- rev(colorRampPalette(brewer.pal(11, "RdBu"))(100))
+
+  # -------------------------------
+  # Preparar matriz
+  # -------------------------------
+
+  # Construir path completo
+  full_path <- file.path(rsdir, cluster_file)
+  
+ voom_mat <- read.table(full_path, header=TRUE, row.names=1, sep="\t", check.names=FALSE)
+
+# Convertir todo a numérico
+voom_mat <- as.matrix(voom_mat)
+mode(voom_mat) <- "numeric"   # fuerza que sea numérica
+
+# Opcional: reemplazar NAs por 0
+voom_mat[is.na(voom_mat)] <- 0
+
+  
+
+  # -------------------------------
+  # Gene sets C5:BP
+  # -------------------------------
+  msig_c5 <- msigdbr(species="Mus musculus", category="C5", subcategory="BP")
+  gene_sets <- split(msig_c5$gene_symbol, msig_c5$gs_name)
+
+  # Filtrar gene sets
+  gs_filtered <- lapply(gene_sets, function(x) intersect(x, rownames(voom_mat)))
+  gs_filtered <- gs_filtered[
+    sapply(gs_filtered, length) >= min_genes &
+    sapply(gs_filtered, length) <= max_genes
+  ]
+
+  # -------------------------------
+  # GSVA
+  # -------------------------------
+  params <- gsvaParam(exprData = voom_mat, geneSets = gs_filtered, kcdf = "Gaussian")
+  gs <- gsva(params)
+
+  # Filtrar pathways irrelevantes
+  gs <- gs[!grepl(paste(exclude_keywords, collapse="|"), rownames(gs), ignore.case=TRUE), ]
+
+  # -------------------------------
+  # Seleccionar top pathways según promedio KO
+  # -------------------------------
+  KO_cols <- grep("KO", colnames(gs))
+  KO_means <- rowMeans(gs[, KO_cols, drop=FALSE])
+  KO_sorted <- sort(KO_means, decreasing=TRUE)
+  top_pathways <- names(KO_sorted)[1:min(top_n, length(KO_sorted))]
+  gs_top <- gs[top_pathways, , drop=FALSE]
+
+  # Escalar filas (z-score)
+  gs_scaled <- gs_top 
+
+  # -------------------------------
+  # Anotación automática de columnas
+  # -------------------------------
+  samples <- colnames(gs_scaled)
+  Condition <- ifelse(grepl("KO", samples), "KO", "WT")
+  SampleType <- ifelse(grepl("DsRedP", samples), "DsRedP", "DsRedN")
+  annotation_col <- data.frame(Condition=Condition, SampleType=SampleType, row.names=samples)
+
+  ann_colors <- list(
+    Condition = c(WT="orange3", KO="aquamarine4"),
+    SampleType = c(DsRedN="#4876FF", DsRedP="#CD4F39")
+  )
+
+  # -------------------------------
+  # Generar heatmap
+  # -------------------------------
+  p <- pheatmap(
+    gs_scaled,
+    cluster_rows=TRUE,
+    cluster_cols=FALSE,
+    annotation_col=annotation_col,
+    annotation_colors=ann_colors,
+    color=rdbu_pal,
+    main=paste0("GSVA - ", cl, " Cluster"),
+    fontsize_row=6,
+    border_color=NA
+  )
+
+  # -------------------------------
+  # Guardar PDF
+  # -------------------------------
+  pdf(file.path(outdir, paste0("/GSVA/GSVA_heatmap_", cl, "_WTvsKO_normalized.pdf")),
+      width=14, height=20)
+  grid::grid.newpage()
+  grid::grid.draw(p$gtable)
+  grid::grid.text("GSVA Score", x=0.85, y=0.93, gp=grid::gpar(fontsize=10))
+  grid::grid.text("GO Terms", x=0.88, y=0.5, rot=90, gp=grid::gpar(fontsize=10))
+  dev.off()
+
+  message("✔ Heatmap generado para ", cl)
+}
+
+
+
+
+
 # Lista de clusters y sus archivos
 cluster_files <- c(
   "Ly6cHi_Monocytes"               = "matrix.macros.Ly6cHi Monocytes.tsv",
@@ -360,11 +478,564 @@ cluster_files <- c(
   "Neutrophils"                    = "matrix.macros.Neutrophils.tsv"
 )
 
-# Ejecutar GSVA para cada cluster
+
+
+
 lapply(names(cluster_files), function(cl) {
   plot_gsva_cluster(
     cl = cl,
-    cluster_file = cluster_files[[cl]]
+    cluster_file = cluster_files[[cl]]  # aquí sí es solo el nombre del archivo
+  )
+})
+
+
+
+plot_gsva_cluster <- function(cl, cluster_file, rsdir, outdir) {
+
+  message("Procesando cluster: ", cl)
+
+  # -------------------------------
+  # Parámetros fijos
+  # -------------------------------
+  min_genes <- 30
+  max_genes <- 500
+  top_n <- 40
+  exclude_keywords <- c(
+    "neuro", "axon", "brain", "neuronal", "synapse",
+    "muscle", "myocyte", "cardiac", "heart",
+    "eye", "retina", "lens",
+    "spinal", "fear", "light"
+  )
+  rdbu_pal <- rev(colorRampPalette(brewer.pal(11, "RdBu"))(100))
+
+  # -------------------------------
+  # Preparar matriz
+  # -------------------------------
+  full_path <- file.path(rsdir, cluster_file)
+  voom_mat <- read.table(full_path, header=TRUE, row.names=1, sep="\t", check.names=FALSE)
+  voom_mat <- as.matrix(voom_mat)
+  mode(voom_mat) <- "numeric"
+  voom_mat[is.na(voom_mat)] <- 0
+
+  # -------------------------------
+  # Gene sets C5:BP
+  # -------------------------------
+  msig_c5 <- msigdbr(species="Mus musculus", category="C5", subcategory="BP")
+  gene_sets <- split(msig_c5$gene_symbol, msig_c5$gs_name)
+  gs_filtered <- lapply(gene_sets, function(x) intersect(x, rownames(voom_mat)))
+  gs_filtered <- gs_filtered[
+    sapply(gs_filtered, length) >= min_genes &
+    sapply(gs_filtered, length) <= max_genes
+  ]
+
+  # -------------------------------
+  # GSVA
+  # -------------------------------
+  params <- gsvaParam(exprData = voom_mat, geneSets = gs_filtered, kcdf = "Gaussian")
+  gs <- gsva(params)
+  gs <- gs[!grepl(paste(exclude_keywords, collapse="|"), rownames(gs), ignore.case=TRUE), ]
+
+  # -------------------------------
+  # Seleccionar top pathways según promedio KO
+  # -------------------------------
+  KO_cols <- grep("KO", colnames(gs))
+  KO_means <- rowMeans(gs[, KO_cols, drop=FALSE])
+  KO_sorted <- sort(KO_means, decreasing=TRUE)
+  top_pathways <- names(KO_sorted)[1:min(top_n, length(KO_sorted))]
+  gs_top <- gs[top_pathways, , drop=FALSE]
+
+  # -------------------------------
+  # Agrupar columnas por tipo de muestra
+  # -------------------------------
+  groups <- list(
+    KO_DsRedN = c("DsRedN-KO2", "DsRedN-KO3"),
+    KO_DsRedP = c("DsRedP-KO2", "DsRedP-KO3"),
+    WT_DsRedN = c("WT1-DsRedN", "WT2_DsRedN"),
+    WT_DsRedP = c("WT1-DsRedP", "WT2_DsRed")
+  )
+
+  gs_grouped <- sapply(groups, function(cols) {
+    cols_exist <- cols[cols %in% colnames(gs_top)]
+    if (length(cols_exist) == 0) {
+      warning("Ninguna columna encontrada para: ", paste(cols, collapse=", "))
+      return(rep(NA, nrow(gs_top)))
+    }
+    rowMeans(gs_top[, cols_exist, drop=FALSE], na.rm=TRUE)
+  })
+
+  gs_grouped <- as.data.frame(gs_grouped)
+
+  # Escalar filas (z-score)
+  gs_scaled <- t(scale(t(gs_grouped)))
+
+  # -------------------------------
+  # Anotación automática de columnas
+  # -------------------------------
+  annotation_col <- data.frame(
+    Condition = c("KO", "KO", "WT", "WT"),
+    SampleType = c("DsRedN", "DsRedP", "DsRedN", "DsRedP"),
+    row.names = colnames(gs_scaled)
+  )
+
+  ann_colors <- list(
+    Condition = c(WT="orange3", KO="aquamarine4"),
+    SampleType = c(DsRedN="#4876FF", DsRedP="#CD4F39")
+  )
+
+  # -------------------------------
+  # Generar heatmap
+  # -------------------------------
+  p <- pheatmap(
+    gs_scaled,
+    cluster_rows=TRUE,
+    cluster_cols=FALSE,
+    annotation_col=annotation_col,
+    annotation_colors=ann_colors,
+    color=rdbu_pal,
+    main=paste0("GSVA - ", cl, " Cluster"),
+    fontsize_row=6,
+    border_color=NA
+  )
+
+  # -------------------------------
+  # Guardar PDF
+  # -------------------------------
+  pdf(file.path(outdir, paste0("GSVA/GSVA_heatmap_", cl, "_WTvsKO_normalized.pdf")),
+      width=12, height=20)
+  grid::grid.newpage()
+  grid::grid.draw(p$gtable)
+  grid::grid.text("GSVA Score", x=0.85, y=0.93, gp=grid::gpar(fontsize=10))
+  grid::grid.text("GO Terms", x=0.88, y=0.5, rot=90, gp=grid::gpar(fontsize=10))
+  dev.off()
+
+  message("✔ Heatmap generado para ", cl)
+}
+
+
+# Lista de clusters y sus archivos
+cluster_files <- c(
+  "Ly6cHi_Monocytes"               = "matrix.macros.Ly6cHi Monocytes.tsv",
+  "Ly6cLo_Monocytes"               = "matrix.macros.Ly6cLo Monocytes.tsv",
+  "Early_IFN_MHCII_TAMs"           = "matrix.macros.Early IFN MHCII TAMs.tsv",
+  "Arg1_Spp1_Mmp12_Mmp19_Il1a_Mac" = "matrix.macros.Arg1 Spp1 Mmp12 Mmp19 Il1a Mac.tsv",
+  "Trem1_Ptgs2_Plaur_Celc4e_Mac"   = "matrix.macros.Trem1 Ptgs2 Plaur Celc4e Mac.tsv",
+  "MHCII_Ccl12_Mac"                = "matrix.macros.MHCII Ccl12 Mac.tsv",
+  "MHCII_Siglec_Mac"               = "matrix.macros.MHCII Siglec Mac.tsv",
+  "IFN_Mac"                        = "matrix.macros.IFN Mac.tsv",
+  "Mmp9_Ctsk_Mac"                  = "matrix.macros.Mmp9 Ctsk Mac.tsv",
+  "Mrc1_C1qc_Cbr2_Gas6_Mac"        = "matrix.macros.Mrc1 C1qc Cbr2 Gas6 Mac.tsv",
+  "Npr2_Actn1_Mac"                 = "matrix.macros.Npr2 Actn1 Mac.tsv",
+  "Fn1_Vegfa_Mac"                  = "matrix.macros.Fn1 Vegfa Mac.tsv",
+  "Neutrophils"                    = "matrix.macros.Neutrophils.tsv"
+)
+
+
+
+
+# Ejecutar para todos los clusters
+lapply(names(cluster_files), function(cl) {
+  plot_gsva_cluster(
+    cl = cl,
+    cluster_file = cluster_files[[cl]],
+    rsdir = rsdir,
+    outdir = outdir
+  )
+})
+
+
+
+
+
+library(GSVA)
+library(msigdbr)
+library(pheatmap)
+library(RColorBrewer)
+library(grid)
+library(dplyr)
+
+plot_gsva_cluster_cytokine <- function(cl, cluster_file, rsdir, outdir) {
+  message("\n==============================")
+  message("Procesando cluster: ", cl)
+  message("==============================\n")
+  
+  # -------------------------------
+  # Parámetros fijos
+  # -------------------------------
+  min_genes <- 30
+  max_genes <- 500
+  top_n <- 40
+  rdbu_pal <- rev(colorRampPalette(brewer.pal(11, "RdBu"))(100))
+  
+  # -------------------------------
+  # Leer matriz desde archivo
+  # -------------------------------
+  full_path <- file.path(rsdir, cluster_file)
+  voom_mat <- read.table(full_path, header=TRUE, row.names=1, sep="\t", check.names=FALSE)
+  voom_mat <- as.matrix(voom_mat)
+  mode(voom_mat) <- "numeric"
+  voom_mat[is.na(voom_mat)] <- 0
+  
+  # -------------------------------
+  # Gene sets GO BP relacionados con citoquinas
+  # -------------------------------
+  msig_go <- msigdbr(species="Mus musculus", category="C5", subcategory="BP")
+  
+  include_keywords <- c(
+    "cytokine", "interleukin", "IL-", "IL[0-9]",
+    "chemokine", "CXCL", "CCL", "TNF"
+  )
+  exclude_keywords <- c("cytokinesis", "cytokinetic")
+  
+  cytokine_go <- msig_go %>%
+    filter(grepl(paste(include_keywords, collapse="|"), gs_name, ignore.case=TRUE)) %>%
+    filter(!grepl(paste(exclude_keywords, collapse="|"), gs_name, ignore.case=TRUE))
+  
+  cytokine_list <- split(cytokine_go$gene_symbol, cytokine_go$gs_name) %>%
+    lapply(unique) %>%
+    Filter(function(x) length(x) >= min_genes & length(x) <= max_genes, .)
+  
+  message("Pathways seleccionados: ", length(cytokine_list))
+  
+  # -------------------------------
+  # GSVA
+  # -------------------------------
+  params <- gsvaParam(exprData = voom_mat, geneSets = cytokine_list, kcdf = "Gaussian")
+  gs <- gsva(params)
+  
+  # -------------------------------
+  # Seleccionar top pathways según promedio KO
+  # -------------------------------
+  KO_cols <- grep("KO", colnames(gs))
+  KO_means <- rowMeans(gs[, KO_cols, drop=FALSE])
+  KO_sorted <- sort(KO_means, decreasing=TRUE)
+  top_pathways <- names(KO_sorted)[1:min(top_n, length(KO_sorted))]
+  gs_top <- gs[top_pathways, , drop=FALSE]
+  
+  # -------------------------------
+  # Agrupar columnas por tipo de muestra
+  # -------------------------------
+  groups <- list(
+    KO_DsRedN = c("DsRedN-KO2", "DsRedN-KO3"),
+    KO_DsRedP = c("DsRedP-KO2", "DsRedP-KO3"),
+    WT_DsRedN = c("WT1-DsRedN", "WT2_DsRedN"),
+    WT_DsRedP = c("WT1-DsRedP", "WT2_DsRed")
+  )
+  
+  gs_grouped <- sapply(groups, function(cols) {
+    cols_exist <- cols[cols %in% colnames(gs_top)]
+    if (length(cols_exist) == 0) {
+      warning("Ninguna columna encontrada para: ", paste(cols, collapse=", "))
+      return(rep(NA, nrow(gs_top)))
+    }
+    rowMeans(gs_top[, cols_exist, drop=FALSE], na.rm=TRUE)
+  })
+  
+  gs_grouped <- as.data.frame(gs_grouped)
+  
+  # Escalar filas (z-score)
+  gs_scaled <- t(scale(t(gs_grouped)))
+  
+  # -------------------------------
+  # Anotación automática de columnas
+  # -------------------------------
+  annotation_col <- data.frame(
+    Condition = c("KO", "KO", "WT", "WT"),
+    SampleType = c("DsRedN", "DsRedP", "DsRedN", "DsRedP"),
+    row.names = colnames(gs_scaled)
+  )
+  
+  ann_colors <- list(
+    Condition = c(WT="orange3", KO="aquamarine4"),
+    SampleType = c(DsRedN="#4876FF", DsRedP="#CD4F39")
+  )
+  
+  # -------------------------------
+  # Crear carpeta GSVA si no existe
+  # -------------------------------
+  gsva_dir <- file.path(outdir, "GSVA")
+  if(!dir.exists(gsva_dir)) dir.create(gsva_dir, recursive = TRUE)
+  
+  # -------------------------------
+  # Generar heatmap
+  # -------------------------------
+  p <- pheatmap(
+    gs_scaled,
+    cluster_rows=TRUE,
+    cluster_cols=FALSE,
+    annotation_col=annotation_col,
+    annotation_colors=ann_colors,
+    color=rdbu_pal,
+    main=paste0("GSVA Cytokine - ", cl),
+    fontsize_row=6,
+    border_color=NA
+  )
+  
+  # -------------------------------
+  # Guardar PDF
+  # -------------------------------
+  pdf(file.path(gsva_dir, paste0("GSVA_Cytokine_", cl, "_WTvsKO_normalized.pdf")), width=12, height=20)
+  grid::grid.newpage()
+  grid::grid.draw(p$gtable)
+  grid::grid.text("GSVA Score", x=0.85, y=0.93, gp=grid::gpar(fontsize=10))
+  grid::grid.text("GO Terms", x=0.88, y=0.5, rot=90, gp=grid::gpar(fontsize=10))
+  dev.off()
+  
+  message("✔ PDF generado para ", cl)
+}
+
+
+
+
+lapply(names(cluster_files), function(cl) {
+  plot_gsva_cluster_cytokine(
+    cl = cl,
+    cluster_file = cluster_files[[cl]],
+    rsdir = rsdir,
+    outdir = outdir
+  )
+})
+
+
+
+
+
+
+plot_gsva_cluster_cytokine <- function(cl, cluster_file) {
+  message("\n==============================")
+  message("Procesando cluster: ", cl)
+  message("==============================\n")
+  
+  # -------------------------------
+  # Parámetros fijos
+  # -------------------------------
+  min_genes <- 30
+  max_genes <- 500
+  top_n <- 40
+  rdbu_pal <- rev(colorRampPalette(brewer.pal(11, "RdBu"))(100))
+  
+  # -------------------------------
+  # Leer matriz desde archivo
+  # -------------------------------
+  full_path <- file.path(rsdir, cluster_file)
+  voom_mat <- read.table(full_path, header=TRUE, row.names=1, sep="\t", check.names=FALSE)
+  
+  # Convertir todo a numérico y reemplazar NAs
+  voom_mat <- as.matrix(voom_mat)
+  mode(voom_mat) <- "numeric"
+  voom_mat[is.na(voom_mat)] <- 0
+  
+  # -------------------------------
+  # Gene sets GO BP relacionados con citoquinas
+  # -------------------------------
+  msig_go <- msigdbr(species="Mus musculus", category="C5", subcategory="BP")
+  
+  include_keywords <- c(
+    "cytokine", "interleukin", "IL-", "IL[0-9]",
+    "chemokine", "CXCL", "CCL", "TNF"
+  )
+  exclude_keywords <- c("cytokinesis", "cytokinetic")
+  
+  cytokine_go <- msig_go %>%
+    dplyr::filter(grepl(paste(include_keywords, collapse="|"), gs_name, ignore.case=TRUE)) %>%
+    dplyr::filter(!grepl(paste(exclude_keywords, collapse="|"), gs_name, ignore.case=TRUE))
+  
+  cytokine_list <- split(cytokine_go$gene_symbol, cytokine_go$gs_name) %>%
+    lapply(unique) %>%
+    Filter(function(x) length(x) >= min_genes & length(x) <= max_genes, .)
+  
+  message("Pathways seleccionados: ", length(cytokine_list))
+  
+  # -------------------------------
+  # GSVA
+  # -------------------------------
+  params <- gsvaParam(exprData = voom_mat, geneSets = cytokine_list, kcdf = "Gaussian")
+  gs <- gsva(params)
+  
+  # -------------------------------
+  # Seleccionar top pathways según promedio KO
+  # -------------------------------
+  KO_cols <- grep("KO", colnames(gs))
+  KO_means <- rowMeans(gs[, KO_cols, drop=FALSE])
+  KO_sorted <- sort(KO_means, decreasing=TRUE)
+  top_pathways <- names(KO_sorted)[1:min(top_n, length(KO_sorted))]
+  gs_top <- gs[top_pathways, , drop=FALSE]
+  
+  # Escalado (z-score)
+  gs_scaled <- gs_top 
+  
+  # -------------------------------
+  # Anotación automática de columnas
+  # -------------------------------
+  samples <- colnames(gs_scaled)
+  Condition <- ifelse(grepl("KO", samples), "KO", "WT")
+  SampleType <- ifelse(grepl("DsRedP", samples), "DsRedP", "DsRedN")
+  annotation_col <- data.frame(Condition=Condition, SampleType=SampleType, row.names=samples)
+  
+  ann_colors <- list(
+    Condition = c(WT="orange3", KO="aquamarine4"),
+    SampleType = c(DsRedN="#4876FF", DsRedP="#CD4F39")
+  )
+  
+  # -------------------------------
+  # Crear carpeta GSVA si no existe
+  # -------------------------------
+  gsva_dir <- file.path(outdir, "GSVA")
+  if(!dir.exists(gsva_dir)) dir.create(gsva_dir, recursive = TRUE)
+  
+  # -------------------------------
+  # Generar heatmap
+  # -------------------------------
+  p <- pheatmap(
+    gs_scaled,
+    cluster_rows=TRUE,
+    cluster_cols=FALSE,
+    annotation_col=annotation_col,
+    annotation_colors=ann_colors,
+    color=rdbu_pal,
+    main=paste0("GSVA Cytokine - ", cl),
+    fontsize_row=6,
+    border_color=NA
+  )
+  
+  # -------------------------------
+  # Guardar PDF
+  # -------------------------------
+  pdf(file.path(gsva_dir, paste0("GSVA_Cytokine_", cl, "_normalized.pdf")), width=14, height=14)
+  grid::grid.newpage()
+  grid::grid.draw(p$gtable)
+  grid::grid.text("GSVA Score", x=0.85, y=0.93, gp=grid::gpar(fontsize=10))
+  grid::grid.text("GO Terms", x=0.88, y=0.5, rot=90, gp=grid::gpar(fontsize=10))
+  dev.off()
+  
+  message("✔ PDF generado para ", cl)
+}
+
+
+lapply(names(cluster_files), function(cl) {
+  plot_gsva_cluster_cytokine(
+    cl = cl,
+    cluster_file = cluster_files[[cl]]  # archivo TSV relativo a rsdir
+  )
+})
+
+
+
+
+plot_gsva_cluster_cytokine <- function(cl, cluster_file) {
+  message("\n==============================")
+  message("Procesando cluster: ", cl)
+  message("==============================\n")
+  
+  # -------------------------------
+  # Parámetros fijos
+  # -------------------------------
+  min_genes <- 30
+  max_genes <- 500
+  top_n <- 40
+  rdbu_pal <- rev(colorRampPalette(brewer.pal(11, "RdBu"))(100))
+  
+  # -------------------------------
+  # Leer matriz desde archivo
+  # -------------------------------
+  full_path <- file.path(rsdir, cluster_file)
+  voom_mat <- read.table(full_path, header=TRUE, row.names=1, sep="\t", check.names=FALSE)
+  
+  # Convertir todo a numérico y reemplazar NAs
+  voom_mat <- as.matrix(voom_mat)
+  mode(voom_mat) <- "numeric"
+  voom_mat[is.na(voom_mat)] <- 0
+  
+  # -------------------------------
+  # Gene sets GO BP relacionados con citoquinas
+  # -------------------------------
+  msig_go <- msigdbr(species="Mus musculus", category="C5", subcategory="BP")
+  
+  include_keywords <- c(
+    "cytokine", "interleukin", "IL-", "IL[0-9]",
+    "chemokine", "CXCL", "CCL", "TNF"
+  )
+  exclude_keywords <- c("cytokinesis", "cytokinetic")
+  
+  cytokine_go <- msig_go %>%
+    dplyr::filter(grepl(paste(include_keywords, collapse="|"), gs_name, ignore.case=TRUE)) %>%
+    dplyr::filter(!grepl(paste(exclude_keywords, collapse="|"), gs_name, ignore.case=TRUE))
+  
+  cytokine_list <- split(cytokine_go$gene_symbol, cytokine_go$gs_name) %>%
+    lapply(unique) %>%
+    Filter(function(x) length(x) >= min_genes & length(x) <= max_genes, .)
+  
+  message("Pathways seleccionados: ", length(cytokine_list))
+  
+  # -------------------------------
+  # GSVA
+  # -------------------------------
+  params <- gsvaParam(exprData = voom_mat, geneSets = cytokine_list, kcdf = "Gaussian")
+  gs <- gsva(params)
+  
+  # -------------------------------
+  # Seleccionar top pathways según promedio KO
+  # -------------------------------
+  KO_cols <- grep("KO", colnames(gs))
+  KO_means <- rowMeans(gs[, KO_cols, drop=FALSE])
+  KO_sorted <- sort(KO_means, decreasing=TRUE)
+  top_pathways <- names(KO_sorted)[1:min(top_n, length(KO_sorted))]
+  gs_top <- gs[top_pathways, , drop=FALSE]
+  
+  # Escalado (z-score)
+  gs_scaled <- gs_top 
+  
+  # -------------------------------
+  # Anotación automática de columnas
+  # -------------------------------
+  samples <- colnames(gs_scaled)
+  Condition <- ifelse(grepl("KO", samples), "KO", "WT")
+  SampleType <- ifelse(grepl("DsRedP", samples), "DsRedP", "DsRedN")
+  annotation_col <- data.frame(Condition=Condition, SampleType=SampleType, row.names=samples)
+  
+  ann_colors <- list(
+    Condition = c(WT="orange3", KO="aquamarine4"),
+    SampleType = c(DsRedN="#4876FF", DsRedP="#CD4F39")
+  )
+  
+  # -------------------------------
+  # Crear carpeta GSVA si no existe
+  # -------------------------------
+  gsva_dir <- file.path(outdir, "GSVA")
+  if(!dir.exists(gsva_dir)) dir.create(gsva_dir, recursive = TRUE)
+  
+  # -------------------------------
+  # Generar heatmap
+  # -------------------------------
+  p <- pheatmap(
+    gs_scaled,
+    cluster_rows=TRUE,
+    cluster_cols=FALSE,
+    annotation_col=annotation_col,
+    annotation_colors=ann_colors,
+    color=rdbu_pal,
+    main=paste0("GSVA Cytokine - ", cl),
+    fontsize_row=6,
+    border_color=NA
+  )
+  
+  # -------------------------------
+  # Guardar PDF
+  # -------------------------------
+  pdf(file.path(gsva_dir, paste0("GSVA_Cytokine_", cl, "_normalized.pdf")), width=14, height=14)
+  grid::grid.newpage()
+  grid::grid.draw(p$gtable)
+  grid::grid.text("GSVA Score", x=0.85, y=0.93, gp=grid::gpar(fontsize=10))
+  grid::grid.text("GO Terms", x=0.88, y=0.5, rot=90, gp=grid::gpar(fontsize=10))
+  dev.off()
+  
+  message("✔ PDF generado para ", cl)
+}
+
+
+lapply(names(cluster_files), function(cl) {
+  plot_gsva_cluster_cytokine(
+    cl = cl,
+    cluster_file = cluster_files[[cl]]  # archivo TSV relativo a rsdir
   )
 })
 

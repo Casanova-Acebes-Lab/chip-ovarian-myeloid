@@ -275,3 +275,150 @@ pdf(paste0(outdir,"/Clustering.Round3/Proportion.tests.all.clustR3.pdf"), width=
 plot_grid(plot1, plot2, plot3, plot4, ncol=4)
 dev.off() 
 
+
+
+
+
+
+##### Scratch 
+
+
+DefaultAssay(data) <- "SCT"
+
+
+citoquinas_macrofagos <- c(
+  # ILs
+  "Il1a", "Il1b", "Il6", "Il10",
+  "Il12a", "Il12b", "Il18", "Il23a",
+  "Il19", "Il20",
+  # Receptores IL
+  "Il1r1", "Il1r2", "Il6ra",
+  "Il10ra", "Il10rb",
+  "Il12rb1", "Il12rb2",
+  "Il18r1", "Il18rap",
+  # No IL – TNF family
+  "Tnf", "Lta", "Tnfsf9", "Tnfsf12",
+  # No IL – Quimiocinas
+  "Ccl2", "Ccl3", "Ccl4", "Ccl5", "Ccl7",
+  "Cxcl2", "Cxcl9", "Cxcl10", "Cxcl11",
+  # Otros mediadores inflamatorios
+  "Ifnb1", "Osm", "Lif", "Spp1"
+)
+
+
+
+
+genes_interes <- c(
+  "Il1a",
+  "Il1b",
+  "Il12a",
+  "Il6",
+  "Tnf",
+  "Cxcl2",
+  "Nfkbia",
+  "Il10",
+  "Ccl2"
+)
+
+
+
+pdf(paste0(outdir,"/Clustering.Round3/cytokines.pdf"), width=22, height=12)
+
+VlnPlot(
+  data,
+  features = genes_interes,
+  split.by = "group",
+  pt.size = 0,
+  cols = c("red", "blue"),
+  ncol = 4,
+  raster = FALSE
+)
+
+dev.off()
+
+
+p <- VlnPlot(
+  data,
+  features = genes_interes,
+  split.by = "group",
+  group.by = "Clustering.Round3",
+  pt.size = 0,
+  ncol = 4,
+  raster = FALSE
+) + 
+  scale_fill_manual(values = c("WT" = "blue", "KO" = "red")) +
+  labs(fill = "group")   # <- Esto agrega la leyenda
+
+
+pdf(paste0(outdir,"/Clustering.Round3/cytokines.pdf"), width=22, height=10)
+p
+dev.off()
+
+
+
+pdf(paste0(outdir,"/Clustering.Round3/cytokines.pdf"), width=22, height=12)
+plots <- VlnPlot(object = data, 
+features = genes_interes, split.by = "group", group.by = "Clustering.Round3", 
+pt.size = 0, combine = T, split.plot=T, log=T,raster = FALSE)
+dev.off()
+
+
+
+
+
+data$group <- factor(data$group, levels = c("WT", "KO"))
+
+
+
+library(patchwork)
+library(ggplot2)
+
+plots <- VlnPlot(
+  data,
+  features = genes_interes,
+  split.by = "group",
+  group.by = "Clustering.Round3",
+  pt.size = 0,
+  ncol = 4,         # Esto controla los violines dentro de cada facet
+  raster = FALSE
+)
+
+# Añadir colores y leyenda FUERA del panel
+plots <- lapply(
+  plots,
+  function(p) {
+    p +
+      scale_fill_manual(values = c("WT" = "blue", "KO" = "red")) +
+      labs(fill = "Group") +
+      guides(fill = guide_legend(override.aes = list(color = NA))) +
+      theme(
+        legend.position = "right",         # Leyenda a la derecha
+        legend.key.size = unit(1.5, "lines"),
+        legend.text = element_text(size = 14),
+        legend.title = element_text(size = 16, face = "bold")
+      )
+  }
+)
+
+# Guardar PDF con 3 columnas
+pdf(paste0(outdir,"/Clustering.Round3/cytokines.pdf"), width=20, height=16)
+wrap_plots(plots, ncol = 3, guides = "collect")  # ncol=3 aquí
+dev.off()
+
+
+
+
+
+
+
+pdf(paste0(outdir,"/Clustering.Round3/cytokines2.pdf"), width=42, height=12)
+
+VlnPlot(
+  data,
+  features = "Il1a",
+  split.by = "tag",
+  pt.size = 0,
+  raster = FALSE
+)
+
+dev.off()

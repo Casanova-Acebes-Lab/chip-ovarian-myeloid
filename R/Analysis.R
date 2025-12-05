@@ -73,6 +73,41 @@ nora.colors <- c(
 
 
 
+
+#######
+
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+
+# 1️⃣ Tabla de conteo de células por cluster x muestra x genotipo
+composition <- data@meta.data %>%
+  group_by(Clustering.Round2, tag, group) %>%
+  summarise(n_cells = n(), .groups = "drop")
+
+head(composition)
+
+# 2️⃣ Pivot para ver proporciones
+composition_prop <- composition %>%
+  group_by(Clustering.Round2) %>%
+  mutate(prop = n_cells / sum(n_cells))
+
+# 3️⃣ Plot de stacked bar por cluster
+pdf(paste0(outdir,"/Analysis/cellbycluster.pdf"), width=24, height=12)
+ggplot(composition_prop, aes(x=Clustering.Round2, y=prop, fill=tag)) +
+  geom_bar(stat="identity") +
+  facet_wrap(~group) +
+  ylab("Proporción de células") +
+  xlab("Cluster") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle=45, hjust=1)) +
+  ggtitle("Composición de células por cluster y muestra")
+dev.off()
+
+####
+
+
+
 # Downsampling
 
 set.seed(123)

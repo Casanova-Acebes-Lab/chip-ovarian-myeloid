@@ -162,13 +162,14 @@ return(p)
 
 
 
-read.data <- function(path, sample, group, DsRed, library, batch){
+read.data <- function(path, sample, group, DsRed, library, batch, chimera){
 data<- readRDS(paste0(datadir,path))
 data$tag <- paste0(sample)
 data$group <- group
 data$DsRed <- DsRed
 data$orig.ident <- library
 data$batch <- batch
+data$chimera <- chimera
 data <- RenameCells(data, add.cell.id = sample)  
 
  if (ncol(data@meta.data) >= 6) {
@@ -354,88 +355,116 @@ plot_gsea <- function(gsea_df, title = "GSEA Plot") {
 
 
 # --------------------------------------------
-# 1️⃣ Pseudobulk with raw counts
+# 1️⃣ Pseudobulk con raw counts
 # --------------------------------------------
 pseudobulk_cluster <- function(seurat_obj, cluster_name, cluster_col="Clustering.Round2", sample_col="tag"){
+  # Matriz de counts raw
   
-  # raw counts assay RNA
   counts <- GetAssayData(seurat_obj, assay="RNA", slot="counts")
   meta   <- seurat_obj@meta.data
   
-  # Select cells
+  # Seleccionar células del cluster
   cells <- rownames(meta)[meta[[cluster_col]] == cluster_name]
   counts <- counts[, cells, drop=FALSE]
   
-  # vector of samples
+  # Vector de samples
   samples <- as.character(meta[cells, sample_col])
   
-  # counts per sample
+  # Matriz pseudobulk
   pb_mat <- t(aggregate.Matrix(t(counts), groupings=samples, fun="sum"))
-
   
-  # cells per sample
+  # Número de células por sample
   n_cells <- table(samples)
-  n_cells <- n_cells[colnames(pb_mat)]  # asegurar orden
+  n_cells <- n_cells[colnames(pb_mat)]
   
-  # total counts per sample
+  # Total counts por sample
   n_counts <- colSums(pb_mat)
   
-  list(pb_mat=pb_mat, n_cells=n_cells, n_counts=n_counts)
+  # Media de counts por célula
+  avg_counts_per_cell <- n_counts / n_cells
+
+
+  # Número de genes detectados por célula (>=1 UMI)
+n_genes_cell <- colSums(counts > 0)
+
+# Promedio por muestra
+n_genes_per_sample <- tapply(n_genes_cell, samples, mean)
+  
+  list(pb_mat=pb_mat, n_cells=n_cells, n_counts=n_counts, avg_counts_per_cell=avg_counts_per_cell,
+       n_genes_per_sample=n_genes_per_sample)
 }
 
+
 # --------------------------------------------
-# 2️⃣ Metadata for samples
+# 2️⃣ Metadata de samples
 # --------------------------------------------
-make_sample_metadata <- function(sample_names){
-  df <- data.frame(sample = sample_names)
-  df$genotype <- ifelse(grepl("KO", sample_names), "KO", "WT")
-  df$dsred    <- ifelse(grepl("DsRedP", sample_names), "DsRedP", "DsRedN")
+
+
+make_sample_metadata <- function(sample_names, n_cells, n_counts, avg_counts_per_cell,
+                                 n_genes_per_sample){
+  depthPerGene <- n_counts / n_genes_per_sample  # <-- aquí calculamos correctamente
+  
+  df <- data.frame(
+    sample = sample_names,
+    genotype = ifelse(grepl("KO", sample_names), "KO", "WT"),
+    dsred    = ifelse(grepl("DsRedP", sample_names), "DsRedP", "DsRedN"),
+    nCells   = n_cells,
+    nCounts  = n_counts,
+    avgCountsPerCell = avg_counts_per_cell,
+    nGenesPerCell = n_genes_per_sample,
+    depthPerGene = depthPerGene
+  )
+  
   rownames(df) <- df$sample
+  df$genotype <- factor(df$genotype, levels=c("WT","KO"))
   df
 }
 
-# --------------------------------------------
-# 3️⃣ Limma-voom adjusting by nCells & nCounts
-# --------------------------------------------
-run_limma_cluster <- function(pb_mat, sample_meta, n_cells){
-  
-  # DGEList
-  dge <- DGEList(counts = pb_mat)
-  keep <- rowSums(dge$counts) > 10
-  dge <- dge[keep, , keep.lib.sizes=FALSE]
-  dge <- calcNormFactors(dge)
-  
-  # factor genotype
-  sample_meta$genotype <- factor(sample_meta$genotype, levels = c("WT", "KO"))
-  
-  if (nlevels(sample_meta$genotype) < 2) {
-    stop("Just one level of genotype in this cluster → KO vs WT contrast not available")
-  }
-  
-  # covariables: nCells & nCounts
-  sample_meta$nCells <- as.numeric(n_cells[colnames(pb_mat)])
 
+# --------------------------------------------
+# 3️⃣ Limma-voom DE por cluster
+# --------------------------------------------
+run_limma_cluster <- function(pb_mat, sample_meta){
   
-  # design
-  design <- model.matrix(~ nCells + genotype, data = sample_meta)
-  
-  # voom
+  # Crear objeto DGE
+  dge <- DGEList(counts = pb_mat)
+
+  # Filtrado por CPM: al menos 1 CPM en >=3 muestras
+  cpm_counts <- cpm(dge)
+  keep <- rowSums(cpm_counts > 1) >= 3
+  dge <- dge[keep, , keep.lib.sizes = FALSE]
+
+  # Normalización de factores de escala (TMM)
+  dge <- calcNormFactors(dge)
+
+  # Diseño: covariable técnica + genotipo
+  design <- model.matrix(~ genotype + depthPerGene, data = sample_meta)
+
   v <- voom(dge, design, plot=FALSE)
-  
-  # adjust
+  expr_normalized <- v$E  # matriz lista para GSVA
+
   fit <- lmFit(v, design)
-  
-  # contrast KO vs WT
+  fit <- eBayes(fit)
+
+  # Contraste KO vs WT
   cont.matrix <- makeContrasts(KOvsWT = genotypeKO, levels = design)
   fit2 <- contrasts.fit(fit, cont.matrix)
   fit2 <- eBayes(fit2)
-  
-  # table
+
+  # Tabla DE
   tt <- topTable(fit2, coef="KOvsWT", number=Inf, sort.by="none")
   tt <- tt[order(tt$adj.P.Val), ]
   tt$gene <- rownames(tt)
-  tt
+
+  # Devolver lista
+  list(
+    tt = tt,
+    expr_normalized = expr_normalized
+  )
 }
+
+
+
 
 
 Volcano2 <- function(data, legend, logFC_threshold = 0.5) {
@@ -470,32 +499,52 @@ Volcano2 <- function(data, legend, logFC_threshold = 0.5) {
 
 
 
-run_pseudobulk_analysis <- function(data, cluster_name, outdir, rsdir) {
-  # On a cluster basis, create pseudobulk matrix
-  res <- pseudobulk_cluster(data, cluster_name = cluster_name)
+# --------
+# --------------------------------------------
+# 5️⃣ Pipeline completo por cluster
+# --------------------------------------------
+run_pseudobulk_analysis <- function(data, cluster_name, outdir, rsdir){
+
+
+  # 1️⃣ Pseudobulk
+  res <- pseudobulk_cluster(data, cluster_name)
   pb_mat <- res$pb_mat
-  n_cells <- res$n_cells
-  n_counts <- res$n_counts
   
+  # 2️⃣ Metadata
+
+  sample_meta <- make_sample_metadata(
+    colnames(pb_mat),
+    n_cells = res$n_cells,
+    n_counts = res$n_counts,
+    avg_counts_per_cell = res$avg_counts_per_cell,
+    n_genes_per_sample = res$n_genes_per_sample 
+  )
+
+colnames(sample_meta)[grepl("nCells.Freq", colnames(sample_meta))] <- "nCells"
+colnames(sample_meta)[grepl("avgCountsPerCell.Freq", colnames(sample_meta))] <- "avgCountsPerCell"
+
+# Mantener solo las columnas necesarias y limpiar nombres
+sample_meta <- sample_meta[, c("sample", "genotype", "depthPerGene", "nCells")]
+rownames(sample_meta) <- sample_meta$sample
+
+# 3️⃣ Limma-voom DE
+res_limma <- run_limma_cluster(pb_mat, sample_meta)
+expr_normalized <- res_limma$expr_normalized  # matriz lista para GSVA
+res_limma <- res_limma$tt                     # tabla DE para los siguientes pasos
+
   
-  # Metadata
-  sample_meta <- make_sample_metadata(colnames(pb_mat))
-
-  # Run limma
-  res_limma <- run_limma_cluster(pb_mat, sample_meta, n_cells)
-
-  # DEG classification
+  # Clasificación DEGs
   res_limma$diffexpressed <- "NO"
   res_limma$diffexpressed[res_limma$adj.P.Val < 0.05 & res_limma$logFC > 0.5] <- "Up"
   res_limma$diffexpressed[res_limma$adj.P.Val < 0.05 & res_limma$logFC < -0.5] <- "Down"
-
+  
   # Top genes
   top_genes <- res_limma %>%
     arrange(adj.P.Val) %>%
     slice_head(n = 50) %>%
     as.data.frame()
-
-  # Output table
+  
+  # Guardar tabla DE
   write.table(
     res_limma,
     file = paste0(rsdir, "/table.macros.", cluster_name, ".tsv"),
@@ -503,24 +552,420 @@ run_pseudobulk_analysis <- function(data, cluster_name, outdir, rsdir) {
     quote = FALSE,
     row.names = FALSE
   )
-
+  
   # Volcano plot
-  p <- Volcano2(data = res_limma, legend = paste0("KO vs WT samples. ", cluster_name))
-
-  # PDF
-  pdf(paste0(outdir, "/Pseudobulk/Volcano.KO_vs_WT_", cluster_name, ".pdf"),
-      width = 16, height = 12)
+  p <- Volcano2(res_limma, legend = paste0("KO vs WT samples. ", cluster_name))
+  pdf(paste0(outdir, "/Pseudobulk/Volcano.KO_vs_WT_", cluster_name, ".pdf"), width=16, height=12)
   print(p)
   dev.off()
+  
 
-  # Return results
-  return(list(
+  # Return
+  list(
     cluster = cluster_name,
     res_limma = res_limma,
     top_genes = top_genes,
-    n_cells = n_cells,
-    n_counts = n_counts,
+    n_cells = res$n_cells,
+    n_counts = res$n_counts,
+    avg_counts_per_cell = res$avg_counts_per_cell,
     plot = p,
-    matrix = pb_mat 
+    matrix = pb_mat,
+    expr_normalized = expr_normalized,  # matriz lista para GSVA
+    sample_meta = sample_meta
+)
+}
+
+
+pseudobulk_limma <- function(
+  seurat_obj,
+  cluster_name,
+  cluster_col = "Clustering.Round2",
+  sample_col = "tag",
+  genotype_col = "group",
+  chimera_col = "chimera",
+  min_cpm = 1,
+  min_samples = 3
+){
+  library(Matrix.utils)
+  library(edgeR)
+  library(limma)
+  
+  # 1️⃣ Extraer counts y metadata
+  counts <- GetAssayData(seurat_obj, assay = "RNA", layer = "counts")
+  meta <- seurat_obj@meta.data
+  
+  # 2️⃣ Seleccionar células del cluster
+  cells <- rownames(meta)[meta[[cluster_col]] == cluster_name]
+  if(length(cells) == 0) stop("No se encontraron células para el cluster")
+  
+  counts <- counts[, cells, drop = FALSE]
+  meta <- meta[cells, , drop = FALSE]
+  meta <- meta[colnames(counts), , drop = FALSE]
+  
+  # 3️⃣ Crear pseudobulk
+  sample_vector <- as.character(meta[[sample_col]])
+  pb_mat <- t(aggregate.Matrix(t(counts), groupings = sample_vector, fun = "sum"))
+  
+  # 4️⃣ Metadata por sample
+  # Contar células por pseudobulk
+  n_cells <- sapply(colnames(pb_mat), function(s) sum(meta[[sample_col]] == s))
+  # Calcular counts per cell
+  total_counts <- colSums(pb_mat)
+  counts_per_cell <- total_counts / n_cells
+  
+  sample_meta <- data.frame(
+    sample = colnames(pb_mat),
+    genotype = factor(ifelse(grepl("KO", colnames(pb_mat)), "KO", "WT"), levels = c("WT","KO")),
+    chimera = factor(meta[[chimera_col]][match(colnames(pb_mat), sample_vector)]),
+    n_cells = n_cells,
+    total_counts = total_counts,
+    counts_per_cell = counts_per_cell
+  )
+  rownames(sample_meta) <- sample_meta$sample
+  
+  # 5️⃣ Filtrado genes
+  dge <- DGEList(counts = pb_mat)
+  keep <- rowSums(cpm(dge) > min_cpm) >= min_samples
+  dge <- dge[keep, , keep.lib.sizes = FALSE]
+  dge <- calcNormFactors(dge)
+  
+  # 6️⃣ voom
+  v <- voom(dge, plot = FALSE)
+  
+  # 7️⃣ Diseño limma usando counts_per_cell como covariable continua
+  design <- model.matrix(~ genotype + counts_per_cell, data = sample_meta)
+  
+  # 8️⃣ Ajuste limma
+  fit <- lmFit(v, design)
+  fit <- eBayes(fit)
+  
+  # 9️⃣ Contraste KO vs WT
+  contrast_matrix <- makeContrasts(KOvsWT = genotypeKO, levels = design)
+  fit2 <- contrasts.fit(fit, contrast_matrix)
+  fit2 <- eBayes(fit2)
+  tt <- topTable(fit2, coef = "KOvsWT", number = Inf, sort.by = "none")
+  tt$gene <- rownames(tt)
+
+  # Clasificación DEGs
+  tt$diffexpressed <- "NO"
+  tt$diffexpressed[tt$adj.P.Val < 0.05 & tt$logFC > 0.5] <- "Up"
+  tt$diffexpressed[tt$adj.P.Val < 0.05 & tt$logFC < -0.5] <- "Down"
+  
+  
+  # 🔟 Devolver resultados
+  return(list(
+    pb_mat = pb_mat,
+    sample_meta = sample_meta,
+    voom_expr = v$E,
+    limma_fit = fit2,
+    tt = tt
+  ))
+}
+
+
+pseudobulk_limma_avg_per_cell_with_umis <- function(
+  seurat_obj,
+  cluster_name,
+  cluster_col = "Clustering.Round2",
+  sample_col = "tag",
+  genotype_col = "group",
+  min_cpm = 1,
+  min_samples = 3
+){
+  library(Matrix.utils)
+  library(edgeR)
+  library(limma)
+  
+  # 1️⃣ Extraer counts y metadata
+  counts <- GetAssayData(seurat_obj, assay = "RNA", layer = "counts")
+  meta <- seurat_obj@meta.data
+  
+  # 2️⃣ Seleccionar células del cluster
+  cells <- rownames(meta)[meta[[cluster_col]] == cluster_name]
+  if(length(cells) == 0) stop("No se encontraron células para el cluster")
+  
+  counts <- counts[, cells, drop = FALSE]
+  meta <- meta[cells, , drop = FALSE]
+  meta <- meta[colnames(counts), , drop = FALSE]
+  
+  # 3️⃣ Crear pseudobulk promedio por célula
+  sample_vector <- as.character(meta[[sample_col]])
+  n_cells <- sapply(unique(sample_vector), function(s) sum(sample_vector == s))
+  
+  pb_mat_sum <- t(aggregate.Matrix(t(counts), groupings = sample_vector, fun = "sum"))
+  pb_mat_avg <- sweep(pb_mat_sum, 2, n_cells[colnames(pb_mat_sum)], FUN = "/")
+  
+  # 4️⃣ Calcular UMIs per cell
+  total_counts <- colSums(pb_mat_sum)
+  umis_per_cell <- total_counts / n_cells[colnames(pb_mat_sum)]
+  
+  # 5️⃣ Metadata por sample
+  sample_meta <- data.frame(
+    sample = colnames(pb_mat_avg),
+    genotype = factor(meta[[genotype_col]][match(colnames(pb_mat_avg), sample_vector)],
+                      levels = c("WT","KO")),
+    n_cells = n_cells[colnames(pb_mat_avg)],
+    umis_per_cell = umis_per_cell
+  )
+  rownames(sample_meta) <- sample_meta$sample
+  
+  # 6️⃣ Filtrado genes
+  dge <- DGEList(counts = pb_mat_avg)
+  keep <- rowSums(cpm(dge) > min_cpm) >= min_samples
+  dge <- dge[keep, , keep.lib.sizes = FALSE]
+  dge <- calcNormFactors(dge)
+  
+  # 7️⃣ voom
+  v <- voom(dge, plot = FALSE)
+  
+  # 8️⃣ Diseño limma con genotipo
+  design <- model.matrix(~ genotype, data = sample_meta)
+  fit <- lmFit(v, design)
+  fit <- eBayes(fit)
+  
+  # 9️⃣ Contraste KO vs WT
+  coef_name <- "genotypeKO"
+  tt <- topTable(fit, coef = coef_name, number = Inf, sort.by = "none")
+  tt$gene <- rownames(tt)
+  
+  # Clasificación DEGs
+  tt$diffexpressed <- "NO"
+  tt$diffexpressed[tt$adj.P.Val < 0.05 & tt$logFC > 0.5]  <- "Up"
+  tt$diffexpressed[tt$adj.P.Val < 0.05 & tt$logFC < -0.5] <- "Down"
+  
+  # 🔟 Matriz corregida para PCA/MDS usando UMIs per cell como covariable
+  corrected_expr <- removeBatchEffect(v$E, covariates = sample_meta$umis_per_cell)
+  
+  return(list(
+    pb_mat_avg    = pb_mat_avg,
+    sample_meta   = sample_meta,
+    voom_expr     = v$E,
+    corrected_expr = corrected_expr,
+    limma_fit     = fit,
+    tt            = tt
+  ))
+}
+
+
+
+
+
+
+
+
+pseudobulk_limma_SVA <- function(
+  seurat_obj,
+  cluster_name,
+  cluster_col = "Clustering.Round2",
+  sample_col = "tag",
+  genotype_col = "group",
+  min_cpm = 1,
+  min_samples = 3,
+  n_sv = 2
+){
+  library(Matrix.utils)
+  library(edgeR)
+  library(limma)
+  library(sva)
+  
+  ### 1) Extraer counts y metadata
+  counts <- GetAssayData(seurat_obj, assay = "RNA", layer = "counts")
+  meta <- seurat_obj@meta.data
+  
+  ### 2) Seleccionar células del cluster
+  cells <- rownames(meta)[meta[[cluster_col]] == cluster_name]
+  if(length(cells) == 0) stop("No se encontraron células para el cluster especificado.")
+  
+  counts <- counts[, cells, drop = FALSE]
+  meta <- meta[cells, , drop = FALSE]
+  meta <- meta[colnames(counts), , drop = FALSE]
+  
+  ### 3) Crear pseudobulk
+  sample_vector <- as.character(meta[[sample_col]])
+  pb_mat <- t(aggregate.Matrix(t(counts), groupings = sample_vector, fun = "sum"))
+  
+  ### 4) Metadata por muestra
+  sample_meta <- data.frame(
+    sample    = colnames(pb_mat),
+    genotype  = factor(meta[[genotype_col]][match(colnames(pb_mat), sample_vector)])
+  )
+  sample_meta$genotype <- factor(sample_meta$genotype, levels = c("WT", "KO"))
+levels(sample_meta$genotype)
+# [1] "WT" "KO"
+
+  rownames(sample_meta) <- sample_meta$sample
+  
+  ### 5) Filtrado
+  dge <- DGEList(counts = pb_mat)
+  keep <- rowSums(cpm(dge) > min_cpm) >= min_samples
+  dge <- dge[keep, , keep.lib.sizes = FALSE]
+  dge <- calcNormFactors(dge)
+  
+  ### 6) Modelos para SVA
+  mod  <- model.matrix(~ genotype, data = sample_meta)
+  mod0 <- model.matrix(~ 1, data = sample_meta)
+  
+  ### 7) Estimar factores latentes
+  svobj <- svaseq(as.matrix(dge$counts), mod = mod, mod0 = mod0, n.sv = n_sv)
+  
+  for(i in 1:n_sv){
+    sample_meta[[paste0("SV", i)]] <- svobj$sv[, i]
+  }
+  
+  ### 8) Diseño final
+  design <- model.matrix(
+    as.formula(
+      paste("~ genotype +", paste(paste0("SV",1:n_sv), collapse=" + "))
+    ),
+    data = sample_meta
+  )
+  
+  ### 9) Voom + limma
+  v <- voom(dge, design, plot = FALSE)
+  fit <- lmFit(v, design)
+  fit <- eBayes(fit)
+  
+  ### 10) Contraste
+  coef_name <- grep("genotype", colnames(design), value = TRUE)[1]
+  tt <- topTable(fit, coef = coef_name, number = Inf, sort.by = "none")
+  tt$gene <- rownames(tt)
+  
+  ### Clasificación DEGs
+  tt$diffexpressed <- "NO"
+  tt$diffexpressed[tt$adj.P.Val < 0.05 & tt$logFC >  0.5] <- "Up"
+  tt$diffexpressed[tt$adj.P.Val < 0.05 & tt$logFC < -0.5] <- "Down"
+  
+  ### 11) MATRIZ CORREGIDA PARA MDS/PCA
+  corrected_expr <- removeBatchEffect(
+    v$E,
+    covariates = svobj$sv
+  )
+  
+  ### 12) Return
+  return(list(
+    pb_mat        = pb_mat,
+    sample_meta   = sample_meta,
+    dge           = dge,
+    svobj         = svobj,
+    design        = design,
+    voom_expr     = v$E,
+    corrected_expr = corrected_expr,   # <<--- NUEVA SALIDA
+    fit           = fit,
+    tt            = tt
+  ))
+}
+
+
+
+
+pseudobulk_limma_RUVr <- function(
+  seurat_obj,
+  cluster_name,
+  cluster_col = "Clustering.Round2",
+  sample_col = "tag",
+  genotype_col = "group",
+  min_cpm = 1,
+  min_samples = 3,
+  k = 2  # número de factores latentes
+){
+  library(Matrix.utils)
+  library(edgeR)
+  library(limma)
+  library(RUVSeq)
+  
+  ### 1) Extraer counts y metadata
+  counts <- GetAssayData(seurat_obj, assay = "RNA", layer = "counts")
+  meta <- seurat_obj@meta.data
+  
+  ### 2) Seleccionar células del cluster
+  cells <- rownames(meta)[meta[[cluster_col]] == cluster_name]
+  if(length(cells) == 0) stop("No se encontraron células para el cluster especificado.")
+  
+  counts <- counts[, cells, drop = FALSE]
+  meta <- meta[cells, , drop = FALSE]
+  meta <- meta[colnames(counts), , drop = FALSE]
+  
+  ### 3) Crear pseudobulk
+  sample_vector <- as.character(meta[[sample_col]])
+  pb_mat <- t(aggregate.Matrix(t(counts), groupings = sample_vector, fun = "sum"))
+  
+  ### 4) Metadata de muestra
+  sample_meta <- data.frame(
+    sample    = colnames(pb_mat),
+    genotype  = factor(meta[[genotype_col]][match(colnames(pb_mat), sample_vector)],
+                       levels = c("WT", "KO"))
+  )
+  rownames(sample_meta) <- sample_meta$sample
+  
+  ### 5) Filtrado EdgeR
+  dge <- DGEList(counts = pb_mat)
+  keep <- rowSums(cpm(dge) > min_cpm) >= min_samples
+  dge <- dge[keep, , keep.lib.sizes = FALSE]
+  dge <- calcNormFactors(dge)
+  
+  ### 6) Modelo de interés
+  mod <- model.matrix(~ genotype, data = sample_meta)
+  
+  ### 7) Identificar genes “invariantes” para RUVr
+  # Usamos todos los genes con baja variación como negativos
+  counts_for_ruv <- as.matrix(dge$counts)
+  counts_for_ruv <- counts_for_ruv[keep, ]
+  
+  # Ajuste inicial voom
+  v <- voom(dge, design = mod, plot = FALSE)
+  
+  # Residuals
+  fit_init <- lmFit(v, mod)
+  resids <- v$E - v$E %*% coef(fit_init) %*% t(mod)  # residuals matrix
+  
+  # RUVr: genera k factores latentes
+  set <- newSeqExpressionSet(counts_for_ruv,
+                             phenoData = data.frame(sample = colnames(counts_for_ruv), row.names = colnames(counts_for_ruv)))
+  
+  ruv <- RUVr(set, cIdx = rownames(counts_for_ruv), k = k, residuals = resids)
+  
+  # Añadir factores latentes al metadata
+  for(i in 1:k){
+    sample_meta[[paste0("W_",i)]] <- pData(ruv)[, paste0("W_",i)]
+  }
+  
+  ### 8) Nuevo diseño con factores latentes
+  design <- model.matrix(
+    as.formula(
+      paste("~ genotype +", paste(paste0("W_",1:k), collapse=" + "))
+    ),
+    data = sample_meta
+  )
+  
+  ### 9) voom + limma con RUVr
+  v2 <- voom(dge, design, plot = FALSE)
+  fit <- lmFit(v2, design)
+  fit <- eBayes(fit)
+  
+  ### 10) Contraste KO vs WT
+  coef_name <- "genotypeKO"
+  tt <- topTable(fit, coef = coef_name, number = Inf, sort.by = "none")
+  tt$gene <- rownames(tt)
+  
+  ### Clasificación DEGs
+  tt$diffexpressed <- "NO"
+  tt$diffexpressed[tt$adj.P.Val < 0.05 & tt$logFC > 0.5]  <- "Up"
+  tt$diffexpressed[tt$adj.P.Val < 0.05 & tt$logFC < -0.5] <- "Down"
+  
+  ### 11) Matriz corregida para MDS/PCA
+  corrected_expr <- removeBatchEffect(v2$E,
+                                      covariates = as.matrix(pData(ruv)[, paste0("W_",1:k)]))
+  
+  ### 12) Return
+  return(list(
+    pb_mat        = pb_mat,
+    sample_meta   = sample_meta,
+    dge           = dge,
+    ruv           = ruv,
+    design        = design,
+    voom_expr     = v2$E,
+    corrected_expr = corrected_expr,
+    fit           = fit,
+    tt            = tt
   ))
 }

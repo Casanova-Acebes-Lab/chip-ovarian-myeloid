@@ -8,8 +8,10 @@ library(limma)
 library(edgeR)
 library(Matrix.utils)
 library(dplyr)
-
-
+library(variancePartition)
+library(SummarizedExperiment)
+library(BiocParallel)
+library(Matrix.utils)
 
 
 
@@ -33,7 +35,7 @@ source("R/Functions.R")
 
 # Read data
 
-data <- readRDS(paste0(rsdir,"objects/data.Clusterized.Round2.rds"))
+data <- readRDS(paste0(rsdir,"objects/data.macrophages.Clusterized2.rds"))
 
 
 
@@ -47,67 +49,44 @@ table(data@meta.data$sample)
 #####
 
 
-# Loading metrics
-
-library(tidyverse)
-
-# Ruta raíz donde están todos los outputs de Cell Ranger
-root_dir <- "data/input/Cellranger"
-
-# Buscar todos los metrics_summary.csv dentro del árbol de directorios
-metrics_files <- list.files(
-  path = root_dir,
-  pattern = "metrics_summary\\.csv$",
-  recursive = TRUE,
-  full.names = TRUE
-)
-
-metrics_files
-
-# Función para extraer el nombre de muestra desde la ruta
-extract_sample_name <- function(filepath) {
-  dirname(filepath) %>% basename()
-}
-
-# Cargar todos los CSV y añadir sample name
-all_metrics <- purrr::map_df(metrics_files, function(f) {
-  df <- read.csv(f, stringsAsFactors = FALSE)
-  df$sample <- extract_sample_name(f)
-  df$full_path <- f
-  df
-})
-
-# Ver las primeras filas
-head(all_metrics)
-
-
-
-
 # Dimensionality reduction plots
+library(sva)
+mat_corrected <- ComBat(dat = as.matrix(Ly6cHi_Monocytes[[3]]), 
+                        batch = Ly6cHi_Monocytes[[2]]$batch, 
+                        mod = model.matrix(~ genotype, data = Ly6cHi_Monocytes[[2]]))
+
+
+
+
 
 
 # expr_corrected: genes x samples (como en tu función residualize_for_covariates)
-mat <- MHCII_Siglec_Mac[[9]]
-
-mat_log <- log2(mat + 1)
-
-# Transponer para que filas = muestras, columnas = genes
-dist_mat <- dist(t(mat_log))
+mat <- Ly6cHi_Monocytes[[7]]
 
 
-mds <- cmdscale(dist_mat, k = 2)  # k = 2 para 2D
+
+
+# 1️⃣ Calcular distancia euclidiana entre columnas (muestras)
+dist_mat <- dist(t(mat))  # transponemos para que dist calcule entre muestras
+
+# 2️⃣ MDS
+mds <- cmdscale(dist_mat, k = 2)
+
+# 3️⃣ Convertir a data.frame para ggplot
 mds_df <- data.frame(
   MDS1 = mds[,1],
   MDS2 = mds[,2],
-  sample = colnames(mat_log)
+  sample = colnames(mat)
 )
 
+# 4️⃣ Revisar
+head(mds_df)
 
-mds_df$genotype <- MHCII_Siglec_Mac[[10]]$genotype[match(mds_df$sample, rownames(MHCII_Siglec_Mac[[10]]))]
+
+mds_df$genotype <- Ly6cHi_Monocytes[[2]]$genotype[match(mds_df$sample, Ly6cHi_Monocytes[[2]]$sample)]
 
 
-
-pdf(paste0(outdir,"/Pseudobulk/MDS.MHCII_Siglec_Mac.ncells.depth.pdf"), width=16, height=12)
+pdf(paste0(outdir,"/Pseudobulk2/MDS.Ly6cHi_Monocytes2.pdf"), width=16, height=12)
 ggplot(mds_df, aes(x = MDS1, y = MDS2, color = sample)) +
   geom_point(size = 4) +
   geom_text(aes(label = sample), vjust = -1.2) +
@@ -131,12 +110,28 @@ library_entropy <- apply(Ly6cHi_Monocytes[[8]], 2, function(x) {
 # --------------------------------------------
 
 
+ Ly6cHi_Monocytes  <- downsample_pseudobulk_iterations(data, "Ly6cHi Monocytes")
+# Ordenar por p-valor ajustado
+tt_ordered <- Ly6cHi_Monocytes[[6]][order(Ly6cHi_Monocytes[[6]]$adj.P.Val), ]
+
+# Seleccionar las 50 primeras filas
+top50 <- head(tt_ordered, 100)
+
+# Mostrar
+top50
+
+
+pdf(paste0(outdir,"/Pseudobulk2/Volcano.Ly6cHi_Monocytes.pdf"), width=16, height=12)
+p <- Volcano2(Ly6cHi_Monocytes[[6]], "Monocytes")
+p
+dev.off()
+
 
 
 # Ly6cHi_Monocytes
 Ly6cHi_Monocytes <- run_pseudobulk_analysis(data, "Ly6cHi Monocytes", outdir, rsdir)
 
-Ly6cHi_Monocytes[[1]]
+Ly6cHi_Monocytes[[3]]
 head(Ly6cHi_Monocytes[[2]], n=200)
 Ly6cHi_Monocytes[[4]]
 head(Ly6cHi_Monocytes[[8]], n=50)
@@ -160,12 +155,23 @@ Ly6cLo_Monocytes[[9]]
 
 # Early IFN|MHCII-TAMs
 
-Early_IFN_MHCII_TAMs <- run_pseudobulk_analysis(data, "Early IFN|MHCII-TAMs", outdir, rsdir)  
+Early_IFN_MHCII_TAMs <- pseudobulk_limma_SVA(data, "Early IFN|MHCII-TAMs")  
 Early_IFN_MHCII_TAMs[[1]]       
 head(Early_IFN_MHCII_TAMs[[2]], n=50)
 Early_IFN_MHCII_TAMs[[3]]
 Early_IFN_MHCII_TAMs[[4]]
 Early_IFN_MHCII_TAMs[[9]]
+
+
+
+tt_ordered <- Early_IFN_MHCII_TAMs[[9]][order(Early_IFN_MHCII_TAMs[[9]]$adj.P.Val), ]
+
+# Seleccionar las 50 primeras filas
+top50 <- head(tt_ordered, 100)
+
+# Mostrar
+top50
+
 
 # Arg1|Spp1|Mmp12|Mmp19|Il1a Mac
 Arg1_Spp1_Mmp12_Mmp19_Il1a_Mac <- run_pseudobulk_analysis(data, "Arg1|Spp1|Mmp12|Mmp19|Il1a Mac", outdir, rsdir)
@@ -184,7 +190,7 @@ Trem1_Ptgs2_Plaur_Celc4e_Mac[[4]]
 Trem1_Ptgs2_Plaur_Celc4e_Mac[[9]]
 
 # MHCII|Ccl12 Mac
-MHCII_Ccl12_Mac <- run_pseudobulk_analysis(data, "MHCII|Ccl12 Mac", outdir, rsdir)
+MHCII_Ccl12_Mac <- (data, "MHCII|Ccl12 Mac", outdir, rsdir)
 MHCII_Ccl12_Mac[[1]]
 head(MHCII_Ccl12_Mac[[2]], n=50)
 MHCII_Ccl12_Mac[[3]]
@@ -193,20 +199,50 @@ MHCII_Ccl12_Mac[[9]]
 
 
 # MHCII|Siglec Mac
-MHCII_Siglec_Mac <- run_pseudobulk_analysis(data, "MHCII|Siglec Mac", outdir, rsdir)
+MHCII_Siglec_Mac <- pseudobulk_limma(data, "MHCII|Siglec Mac")
 MHCII_Siglec_Mac[[1]]
-head(MHCII_Siglec_Mac[[2]], n=50)
+head(MHCII_Siglec_Mac[[9]], n=50)
 MHCII_Siglec_Mac[[3]]
 MHCII_Siglec_Mac[[4]]
 MHCII_Siglec_Mac[[9]]
 
+
+tt_ordered <- MHCII_Siglec_Mac[[6]][order(MHCII_Siglec_Mac[[6]]$adj.P.Val), ]
+
+# Seleccionar las 50 primeras filas
+top50 <- head(tt_ordered, 100)
+
+# Mostrar
+top50
+
+
+
+
+pdf(paste0(outdir,"/Pseudobulk2/MHCII|Siglec Mac.pdf"), width=16, height=12)
+p <- Volcano2(MHCII_Siglec_Mac[[6]], "MHCII|Siglec Mac")
+p
+dev.off()
+
+
+
 # IFN Mac
-IFN_Mac <- run_pseudobulk_analysis(data, "IFN Mac", outdir, rsdir)
+IFN_Mac <- pseudobulk_limma_avg_per_cell_with_umis(data, "IFN Mac")
 IFN_Mac[[1]]
-head(IFN_Mac[[2]], n=50)
+head(IFN_Mac[[9]], n=50)
 IFN_Mac[[3]]
 IFN_Mac[[4]]
 IFN_Mac[[9]]
+
+
+
+tt_ordered <- IFN_Mac[[6]][order(IFN_Mac[[6]]$adj.P.Val), ]
+
+# Seleccionar las 50 primeras filas
+top50 <- head(tt_ordered, 100)
+
+# Mostrar
+top50
+
 
 # Mmp9|Ctsk Mac
 Mmp9_Ctsk_Mac <- run_pseudobulk_analysis(data, "Mmp9|Ctsk Mac", outdir, rsdir)
@@ -218,12 +254,22 @@ Mmp9_Ctsk_Mac[[9]]
 
 
 # Mrc1|C1qc|Cbr2|Gas6 Mac
-Mrc1_C1qc_Cbr2_Gas6_Mac <- run_pseudobulk_analysis(data, "Mrc1|C1qc|Cbr2|Gas6 Mac", outdir, rsdir)
+Mrc1_C1qc_Cbr2_Gas6_Mac <- pseudobulk_limma_avg_per_cell_with_umis(data, "Mrc1|C1qc|Cbr2|Gas6 Mac")
 Mrc1_C1qc_Cbr2_Gas6_Mac[[1]]
 head(Mrc1_C1qc_Cbr2_Gas6_Mac[[2]], n=50)
 Mrc1_C1qc_Cbr2_Gas6_Mac[[3]]
 Mrc1_C1qc_Cbr2_Gas6_Mac[[4]]
 Mrc1_C1qc_Cbr2_Gas6_Mac[[9]]
+
+tt_ordered <- Mrc1_C1qc_Cbr2_Gas6_Mac[[6]][order(Mrc1_C1qc_Cbr2_Gas6_Mac[[6]]$adj.P.Val), ]
+
+# Seleccionar las 50 primeras filas
+top50 <- head(tt_ordered, 100)
+
+# Mostrar
+top50
+
+
 
 # Npr2|Actn1 Mac
 Npr2_Actn1_Mac <- run_pseudobulk_analysis(data, "Npr2|Actn1 Mac", outdir, rsdir)
@@ -532,3 +578,141 @@ ggplot(markers_macro, aes(x = cluster, y = metric)) +
 
 dev.off()
 
+
+
+
+
+
+#### Seurat MAST
+
+
+library(Seurat)
+library(dplyr)
+
+# ---- PARÁMETROS ----
+cluster_col <- "Clustering.Round2"
+cluster_of_interest <- "Ly6cHi Monocytes"
+
+genotype_col <- "group"   # WT / KO
+latent_var <- "nCount_RNA"
+
+# ---- 1. Seleccionar células del cluster ----
+cells_use <- rownames(data@meta.data)[ data@meta.data[[cluster_col]] == cluster_of_interest ]
+
+if (length(cells_use) == 0) stop("No hay células del cluster seleccionado")
+
+message("Células seleccionadas: ", length(cells_use))
+
+# ---- 2. Crear un objeto SOLO con el cluster ----
+sub <- subset(data, cells = cells_use)
+
+# ---- 3. Asignar las identidades al GENOTIPO ----
+Idents(sub) <- sub[[genotype_col]][,1]
+
+levels(Idents(sub))
+# Debe mostrar: "WT" "KO"
+
+# ---- 4. Ejecutar FindMarkers dentro del cluster ----
+markers <- FindMarkers(
+    sub,
+    ident.1 = "KO",
+    ident.2 = "WT",
+    test.use = "MAST",
+    latent.vars = latent_var
+)
+
+# ---- 5. Ordenar y añadir nombres ----
+markers$gene <- rownames(markers)
+markers <- markers %>% arrange(p_val_adj)
+
+# ---- 6. Ver resultados ----
+head(markers, 50)
+library(dplyr)
+
+# Proporción de células expresando cada gen
+expr_binary <- expr > 0
+pct_expr <- data.frame(
+  gene = rownames(expr),
+  pct_WT = rowSums(expr_binary[, cond == "WT"]) / sum(cond == "WT"),
+  pct_KO = rowSums(expr_binary[, cond == "KO"]) / sum(cond == "KO")
+)
+
+# Filtrar genes “problemáticos” suavizado
+df_problematic <- pct_expr %>%
+  filter(
+    (pct_WT < 0.1 & pct_KO > 0.3) |   # <10% vs >30%
+    (pct_KO < 0.1 & pct_WT > 0.3)
+  ) %>%
+  arrange(desc(abs(pct_WT - pct_KO)))
+
+# Ver top 20
+head(df_problematic, 20)
+
+
+
+
+library(Seurat)
+library(dplyr)
+
+# ---- PARÁMETROS ----
+cluster_col <- "Clustering.Round2"
+cluster_of_interest <- "Trem1|Ptgs2|Plaur|Celc4e Mac"
+genotype_col <- "group"   # WT / KO
+latent_var <- c("batch")
+
+# ---- 1. Seleccionar células del cluster ----
+cells_use <- rownames(data@meta.data)[ data@meta.data[[cluster_col]] == cluster_of_interest ]
+if (length(cells_use) == 0) stop("No hay células del cluster seleccionado")
+message("Número de células seleccionadas: ", length(cells_use))
+
+# ---- 2. Crear un objeto SOLO con el cluster ----
+sub <- subset(data, cells = cells_use)
+
+# ---- 3. Asignar las identidades al GENOTIPO ----
+Idents(sub) <- factor(sub[[genotype_col]][,1])
+levels(Idents(sub))  # Debe mostrar: "WT" "KO"
+
+# ---- 4. Downsamplear al grupo más pequeño ----
+set.seed(123)  # reproducibilidad
+group_counts <- table(Idents(sub))
+min_cells <- min(group_counts)
+
+cells_downsampled <- unlist(lapply(names(group_counts), function(g) {
+  sample(which(Idents(sub) == g), min_cells)
+}))
+
+sub_down <- subset(sub, cells = cells_downsampled)
+message("Células después del downsampling: ")
+table(Idents(sub_down))
+
+# ---- 5. Ejecutar FindMarkers dentro del cluster con MAST ----
+
+DefaultAssay(data) <- "SCT"
+markers <- FindMarkers(
+  data,
+  ident.1 = "KO",
+  ident.2 = "WT",
+  test.use = "MAST",
+  min.pct = 0.2
+)
+
+# ---- 6. Ver resultados ----
+head(markers, 100)
+
+
+
+DefaultAssay(data) <- "RNA"
+colnames(data@meta.data)
+
+
+
+
+pdf(paste0(outdir, "/Pseudobulk2/violin.Il1b.pdf"), width = 26, height = 14)
+VlnPlot(
+  data,
+  features = "Il1b",
+  group.by = "Clustering.Round2",
+  pt.size = 0,
+  split.by="chimera"
+)
+dev.off()
