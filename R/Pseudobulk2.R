@@ -658,7 +658,7 @@ library(dplyr)
 cluster_col <- "Clustering.Round2"
 cluster_of_interest <- "Trem1|Ptgs2|Plaur|Celc4e Mac"
 genotype_col <- "group"   # WT / KO
-latent_var <- c("batch")
+latent_var <- "nCount_RNA"
 
 # ---- 1. Seleccionar células del cluster ----
 cells_use <- rownames(data@meta.data)[ data@meta.data[[cluster_col]] == cluster_of_interest ]
@@ -687,13 +687,16 @@ table(Idents(sub_down))
 
 # ---- 5. Ejecutar FindMarkers dentro del cluster con MAST ----
 
-DefaultAssay(data) <- "SCT"
+DefaultAssay(data) <- "RNA"
+
+Idents(data) <- "group"
 markers <- FindMarkers(
   data,
   ident.1 = "KO",
   ident.2 = "WT",
   test.use = "MAST",
-  min.pct = 0.2
+  min.pct = 0.2,
+  latent.vars = c("nCount_RNA", "batch") 
 )
 
 # ---- 6. Ver resultados ----
@@ -716,3 +719,17 @@ VlnPlot(
   split.by="chimera"
 )
 dev.off()
+
+
+
+
+pdf(paste0(outdir, "/Pseudobulk2/violin.count.pdf"), width = 26, height = 14)
+VlnPlot(
+  data,
+  features = "nCount_RNA",
+  group.by = "Clustering.Round2",
+  pt.size = 0,
+  split.by="tag"
+)
+dev.off()
+

@@ -50,7 +50,6 @@ nora.colors <- c(
   "Mrc1|C1qc|Cbr2|Gas6 Mac"      = "#FFD92F",   # amarillo brillante (TAM residentes)
   "Arg1|Spp1|Mmp12|Mmp19|Il1a Mac" = "#4DAF4A", # verde TAM reparadores
   "Npr2|Actn1 Mac"       = "#A6D854",   # verde lima (TAM estructurales)
-  "Marco+ Mac"           = "#1E3A8A",   # azul intermedio (scavenger)
   "Mmp9|Ctsk Mac"        = "#00723F",   # verde botella (remodelado matriz)
   "IFN Mac"              = "#C080FF",   # morado claro (TAM interferón maduros)
   "Fn1|Vegfa Mac"        = "#FFA500",   # naranja angiogénico
@@ -159,12 +158,13 @@ dev.off()
 
 
 
-
 pdf(paste0(outdir,"/Clustering.Round3/Umap.split.downsampled2.8kcells.pdf"), width=18, height=10)
  DimPlot(data, reduction = "umap", split.by="type", 
  label = FALSE, raster = FALSE, cols = nora.colors, ncol = 2)
 
 dev.off()
+
+
 
 
 
@@ -277,7 +277,205 @@ dev.off()
 
 
 
+## Bubble plots DE genes
 
+
+
+
+macro_clusters <- c(
+  "Ly6cHi Monocytes",
+  "Ly6cLo Monocytes",
+  "Early IFN|MHCII-TAMs",
+  "Trem1|Ptgs2|Plaur|Celc4e Mac",
+  "Mrc1|C1qc|Cbr2|Gas6 Mac",
+  "Arg1|Spp1|Mmp12|Mmp19|Il1a Mac",
+  "Npr2|Actn1 Mac",
+  "Mmp9|Ctsk Mac",
+  "IFN Mac",
+  "Fn1|Vegfa Mac",
+  "MHCII|Siglec Mac",
+  "MHCII|Ccl12 Mac",
+  "Neutrophils"
+)
+
+Idents(data) <- "Clustering.Round3"
+mac <- subset(
+  data,
+  idents = macro_clusters
+)
+
+
+mac <- subset(
+  mac,
+  subset = tag %in% c("WT1-DsRedP", "DsRedP-KO2")
+)
+
+
+
+mac$cluster_condition <- paste(
+  mac$Clustering.Round3,
+  mac$tag,
+  sep = "_"
+)
+
+Idents(mac) <- "cluster_condition"
+
+
+Idents(mac) <- "Clustering.Round3"
+
+markers_round3 <- FindAllMarkers(
+  mac,
+  only.pos = TRUE,
+  min.pct = 0.3,
+  logfc.threshold = 0.4,
+  test.use = "MAST",
+  latent.vars = "nCount_RNA"
+)
+
+
+library(dplyr)
+
+top30_markers <- markers_round3 %>%
+  group_by(cluster) %>%
+  arrange(desc(avg_log2FC)) %>%
+  slice_head(n = 50) %>%
+  ungroup()
+
+as.data.frame(top30_markers)
+
+write.table(top30_markers, paste0(rsdir,"table.clusters.markers.filt.Clusterized.R3.MAC.tsv"), sep='\t')
+write.table(markers_round3, paste0(rsdir,"table.clusters.markers.Clusterized.R3.MAC.tsv"), sep='\t')
+
+markers_round3 <- read.table(paste0(rsdir,"table.clusters.markers.Clusterized.R3.MAC.tsv"), sep='\t', header=T)
+
+
+
+library(dplyr)
+library(tibble)
+set.seed(123)
+
+Idents(mac) <- "Clustering.Round3"
+
+de_by_cluster <- lapply(
+  levels(mac),
+  function(cl){
+
+    cells_cl <- WhichCells(mac, idents = cl)
+    meta_cl  <- mac@meta.data[cells_cl, ]
+
+    n1 <- sum(meta_cl$tag == "DsRedP-KO2")
+    n2 <- sum(meta_cl$tag == "WT1-DsRedP")
+
+    if(min(n1, n2) < 20) return(NULL)
+
+    ratio <- max(n1, n2) / min(n1, n2)
+
+    if(ratio > 2){
+      n_use <- min(n1, n2)
+      cells_use <- c(
+        sample(rownames(meta_cl)[meta_cl$tag == "DsRedP-KO2"], n_use),
+        sample(rownames(meta_cl)[meta_cl$tag == "WT1-DsRedP"], n_use)
+      )
+    } else {
+      cells_use <- rownames(meta_cl)
+    }
+
+    # 🔑 crear objeto downsampleado
+    mac_ds <- subset(mac, cells = cells_use)
+
+    FindMarkers(
+      mac_ds,
+      group.by = "tag",
+      ident.1 = "DsRedP-KO2",
+      ident.2 = "WT1-DsRedP",
+      assay = "RNA",
+      test.use = "MAST",
+      latent.vars = c("nCount_RNA", "percent.mt"),
+      min.pct = 0,
+      logfc.threshold = 0
+    ) %>%
+      rownames_to_column("gene") %>%
+      mutate(
+        cluster = cl,
+        n_cells = length(cells_use),
+        ratio = ratio
+      )
+  }
+) |> bind_rows()
+
+
+
+
+
+
+de_filtered <- de_by_cluster %>%
+  filter(
+    p_val_adj < 0.05,         # significancia
+    pct.1 > 0.4 | pct.2 > 0.4,  # expresión mínima en al menos 20% de células de algún grupo
+    abs(avg_log2FC) > 0.25    # fold change relevante
+  )
+
+
+
+
+top30_markers <- de_filtered %>%
+  group_by(cluster) %>%
+  arrange(desc(avg_log2FC)) %>%
+  slice_head(n = 20) %>%
+  ungroup()
+
+  as.data.frame(top30_markers)
+
+write.table(top30_markers, paste0(rsdir,"table.DE.KOvsWT.by.cluster.Clusterized.R3.MAC.Batch.A.tsv"), sep='\t')
+markers <-read.table(paste0(rsdir,"table.DE.KOvsWT.by.cluster.Clusterized.R3.MAC.Batch.A.tsv"), sep='\t', header=T) 
+
+
+
+# Pre-filtrar genes para que no sean escasos
+expr <- GetAssayData(mac, slot="data")
+genes_use <- rownames(expr)[
+  rowSums(expr[, mac$tag=="DsRedP-KO2"] > 0) / sum(mac$tag=="DsRedP-KO2") >= 0.3 |
+  rowSums(expr[, mac$tag=="DsRedN-KO2"] > 0) / sum(mac$tag=="DsRedN-KO2") >= 0.3
+]
+
+# DE rápido por clúster
+Idents(mac) <- "Clustering.Round3"
+
+de_by_cluster <- lapply(
+  levels(mac),
+  function(cl){
+    FindMarkers(
+      mac,
+      subset.ident = cl,
+      group.by = "tag",
+      ident.1 = "DsRedP-KO2",
+      ident.2 = "DsRedN-KO2",
+      test.use = "wilcox",
+      features = genes_use
+    ) %>%
+      tibble::rownames_to_column("gene") %>%
+      mutate(cluster = cl)
+  }
+) |> bind_rows()
+
+head(de_by_cluster, n=100)
+
+
+de_filtered <- de_by_cluster %>%
+  filter(
+    p_val_adj < 0.05,         # significancia
+    pct.1 > 0.4 | pct.2 > 0.4,  # expresión mínima en al menos 20% de células de algún grupo
+    abs(avg_log2FC) > 0.25    # fold change relevante
+  )
+
+
+top30_markers <- de_filtered  %>%
+  group_by(cluster) %>%
+  arrange(desc(avg_log2FC)) %>%
+  slice_head(n = 20) %>%
+  ungroup()
+
+  as.data.frame(top30_markers)
 
 
 ##### Scratch 
@@ -417,6 +615,33 @@ VlnPlot(
   data,
   features = "Il1a",
   split.by = "tag",
+  pt.size = 0,
+  raster = FALSE
+)
+
+dev.off()
+
+##### Markers
+
+png(paste0(outdir,"/Clustering.Round3/Umap_Markers.IFN.png"), width=1600, height=1400)
+FeaturePlot_scCustom(data, features= c("Ifit3", "Ifit2", "Irf7"), reduction = "umap",
+split.by="group")
+dev.off()
+
+
+png(paste0(outdir,"/Clustering.Round3/Umap_Markers2.png"), width=1600, height=1400)
+FeaturePlot_scCustom(data, features= c("Mrc1", "Siglec1", "Folr2"), reduction = "umap",
+split.by="group")
+dev.off()
+
+
+
+png(paste0(outdir,"/Clustering.Round3/cytokines3.png"), width=1800, height=1200)
+
+VlnPlot(
+  data,
+  features = c("Il1a", "Il1b", "Il6", "Tnf", "Arg1", "Cxcl2"),
+  group.by = "type",
   pt.size = 0,
   raster = FALSE
 )

@@ -253,42 +253,11 @@ dev.off()
 
 data <- FindNeighbors(data, dims = 1:30)
 
-# Eliminar clusters viejos de ese prefijo (si existen)
-cols_old <- grep("^SCT_snn_res", colnames(data@meta.data), value = TRUE)
-if(length(cols_old) > 0){
-  data@meta.data[, cols_old] <- NULL
-}
-
-resolutions <- c(0.2, 0.4, 0.6, 0.8, 1.0)
-
-for (res in resolutions) {
-  data <- FindClusters(
-    data,
-    resolution = res,
-    verbose = FALSE,
-    graph.name = "SCT_snn"   # grafo correcto
-  )
-}
-
-# Ahora sí puedes listar las columnas generadas
-grep("^SCT_snn_res", colnames(data@meta.data), value = TRUE)
-
-
-png(paste0(outdir,"/QC2/clustree.png"), width=2200, height=800)
-clustree(data, prefix = "SCT_snn_res.")
-dev.off()
-
 
 data <- FindClusters(data, resolution = 0.8)
 
 data <- RunUMAP(data, dims = 1:30)
 
-png(paste0(outdir,"/QC2/Umap.QC2.png"), width=2400, height=800)
-p1 <- FeaturePlot(data.harmony, features = "nCount_RNA", label=TRUE, raster = FALSE) & theme(plot.title = element_text(size=10))
-p2 <- FeaturePlot(data.harmony, features = "nFeature_RNA", label=TRUE, raster = FALSE) & theme(plot.title = element_text(size=10))
-p3 <- FeaturePlot(data.harmony, features = "percent.mt", label=TRUE, raster = FALSE) & theme(plot.title = element_text(size=10))
-plot_grid(p1,p2,p3, ncol=3)
-dev.off()
 
 
 
