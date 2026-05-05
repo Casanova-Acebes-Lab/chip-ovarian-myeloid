@@ -1,4 +1,3 @@
-
 library(Seurat)
 library(dplyr)
 library(cowplot)
@@ -7,14 +6,13 @@ library(harmony)
 library(ggplot2)
 library(RPresto)
 library(celldex)
-library(SingleR)
 library(SingleCellExperiment)
-library(clustree)
-library("scProportionTest")
 library(ggrepel)
 library(dplyr)
 library(tibble)
-
+library(clustree)
+library(presto)
+library(SingleR)
 
 
 
@@ -33,6 +31,7 @@ names(values) <- keys
 rsdir <- values["rsdir"]
 datadir <- values["datadir"]
 outdir <- values["outdir"]
+soupx_dir <- "/storage/scratch01/users/dcaceres/Sarai_Soupx"
 
 
 source("R/Functions.R")
@@ -42,7 +41,7 @@ source("R/Functions.R")
 # Reading data 
 
 
-smpR065_DsRedP_KO3 <- read.data("SoupX/2.0/smR065/Seurat_smpR065_DsRedP-KO3.2.rds",
+smpR065_DsRedP_KO3 <- read.data(paste0(soupx_dir,"/smR065.9/Seurat_smpR065_DsRedP-KO3.2.rds"),
 "DsRedP-KO3",
 "KO",
 "DsRedP", 
@@ -52,7 +51,7 @@ smpR065_DsRedP_KO3 <- read.data("SoupX/2.0/smR065/Seurat_smpR065_DsRedP-KO3.2.rd
 )
 
 
-smR039a_WT1_DsRedn <- read.data("SoupX/2.0/SmR039a.9/Seurat_WT1-DsRedn.2.rds",
+smR039a_WT1_DsRedn <- read.data(paste0(soupx_dir,"/SmR039a.9/Seurat_WT1-DsRedn.2.rds"),
 "WT1-DsRedN",
 "WT",
 "DsRedN", 
@@ -61,7 +60,7 @@ smR039a_WT1_DsRedn <- read.data("SoupX/2.0/SmR039a.9/Seurat_WT1-DsRedn.2.rds",
 "WT1"
 )
 
-smR039a_WT1_DsRedp <- read.data("SoupX/2.0/SmR039a.9/Seurat_WT1-DsRedp.2.rds",
+smR039a_WT1_DsRedp <- read.data(paste0(soupx_dir,"/SmR039a.9/Seurat_WT1-DsRedp.2.rds"),
 "WT1-DsRedP",
 "WT",
 "DsRedP", 
@@ -70,16 +69,16 @@ smR039a_WT1_DsRedp <- read.data("SoupX/2.0/SmR039a.9/Seurat_WT1-DsRedp.2.rds",
 "WT1"
 )
 
-smR039a_DsRedN_KO2 <- read.data("SoupX/2.0/SmR039a.9/Seurat_KO2-DsRedn.2.rds",
+smR039a_DsRedN_KO2 <- read.data(paste0(soupx_dir,"/SmR039a.9/Seurat_KO2-DsRedn.2.rds"),
 "DsRedN_KO2",
 "KO",
-"DsRedP", 
+"DsRedN", 
 "smR039a",
 "A",
 "KO2"
 )
 
-smR039a_DsRedP_KO2 <- read.data("SoupX/2.0/SmR039a.9/Seurat_KO2-DsRedp.2.rds",
+smR039a_DsRedP_KO2 <- read.data(paste0(soupx_dir,"/SmR039a.9/Seurat_KO2-DsRedp.2.rds"),
 "DsRedP_KO2",
 "KO",
 "DsRedP", 
@@ -89,7 +88,7 @@ smR039a_DsRedP_KO2 <- read.data("SoupX/2.0/SmR039a.9/Seurat_KO2-DsRedp.2.rds",
 )
 
 
-smR039b_WT2_DsRedn <- read.data("SoupX/SmR039b.9/Seurat_WT2-DsRedn.2.rds",
+smR039b_WT2_DsRedn <- read.data(paste0(soupx_dir,"/SmR039b.9/Seurat_WT2-DsRedn.2.rds"),
 "WT2_DsRedN",
 "WT",
 "DsRedN", 
@@ -98,7 +97,7 @@ smR039b_WT2_DsRedn <- read.data("SoupX/SmR039b.9/Seurat_WT2-DsRedn.2.rds",
 "WT2"
 )
 
-smR039b_WT2_DsRedp <- read.data("SoupX/SmR039b.9/Seurat_WT2-DsRedp.2.rds",
+smR039b_WT2_DsRedp <- read.data(paste0(soupx_dir,"/SmR039b.9/Seurat_WT2-DsRedp.2.rds"),
 "WT2_DsRedP",
 "WT",
 "DsRedP", 
@@ -107,7 +106,7 @@ smR039b_WT2_DsRedp <- read.data("SoupX/SmR039b.9/Seurat_WT2-DsRedp.2.rds",
 "WT2"
 )
 
-smR039b_DsRedN_KO3 <- read.data("SoupX/2.0/SmR039b.9/Seurat_KO3-DsRedn.2.rds",
+smR039b_DsRedN_KO3 <- read.data(paste0(soupx_dir,"/SmR039b.9/Seurat_KO3-DsRedn.2.rds"),
 "DsRedN_KO3",
 "KO",
 "DsRedN", 
@@ -130,21 +129,180 @@ data <- Merge_Seurat_List(list_seurat = object_list)
 data <- JoinLayers(data)
 
 
-# Removing lowly expressed genes
-
-gene_counts <- rowSums(GetAssayData(data, layer = "counts") > 0)
-genes_keep <- names(gene_counts[gene_counts >= 20])
-data <- subset(data, features = genes_keep)
-
-# Removing doublets
+# Removing doublets and araging metadata
 
 data <- subset(data, subset = DF.class == "Doublet", invert=TRUE)
 
 data$batch <- factor(data$batch, levels = c("A", "B", "C"))
+data$sample_id <- paste(data$chimera, data$DsRed, sep = "_")
+
+data$tet2_status <- dplyr::case_when(
+  data$group == "KO" & data$DsRed == "DsRedP" ~ "Tet2_KO",
+  TRUE ~ "Tet2_WT"
+)
+
+data$cell_context <- dplyr::case_when(
+  data$group == "KO" & data$DsRed == "DsRedP" ~ "KO_DsRedP_true_Tet2KO",
+  data$group == "KO" & data$DsRed == "DsRedN" ~ "KO_DsRedN_WT_bystander",
+  data$group == "WT" & data$DsRed == "DsRedP" ~ "WT_DsRedP_control",
+  data$group == "WT" & data$DsRed == "DsRedN" ~ "WT_DsRedN_control"
+)
+
+
+data$cell_context <- factor(
+  data$cell_context,
+  levels = c(
+    "WT_DsRedN_control",
+    "WT_DsRedP_control",
+    "KO_DsRedN_WT_bystander",
+    "KO_DsRedP_true_Tet2KO"
+  )
+)
+
+data$tet2_status <- factor(data$tet2_status, levels = c("Tet2_WT", "Tet2_KO"))
+data$batch <- factor(data$batch, levels = c("A", "B", "C"))
+data$DsRed <- factor(data$DsRed, levels = c("DsRedN", "DsRedP"))
+data$group <- factor(data$group, levels = c("WT", "KO"))
+
+
+data$mouse_id <- data$chimera
+
+
+## Busco asimetrias en numero de celulas, desbalance en grupos, etc
+
+table(data$sample_id, useNA = "ifany")
+table(data$sample_id, data$batch)
+table(data$sample_id, data$group)
+table(data$sample_id, data$DsRed)
+table(data$sample_id, data$mouse_id)
+table(data$sample_id, data$cell_context)
+
+
+
+design_table <- data@meta.data %>%
+  dplyr::distinct(
+    sample_id,
+    tag,
+    orig.ident,
+    batch,
+    group,
+    DsRed,
+    mouse_id,
+    tet2_status,
+    cell_context
+  ) %>%
+  dplyr::arrange(batch, sample_id)
+
+design_table
+
+
+
+data$percent.mt <- PercentageFeatureSet(data, pattern = "^mt-")
+
+
+qc_by_sample <- data@meta.data %>%
+  group_by(
+    sample_id,
+    batch,
+    group,
+    DsRed,
+    mouse_id,
+    tet2_status,
+    cell_context
+  ) %>%
+  summarise(
+    n_cells = n(),
+    median_nCount_RNA = median(nCount_RNA, na.rm = TRUE),
+    mean_nCount_RNA = mean(nCount_RNA, na.rm = TRUE),
+    median_nFeature_RNA = median(nFeature_RNA, na.rm = TRUE),
+    mean_nFeature_RNA = mean(nFeature_RNA, na.rm = TRUE),
+    median_percent_mt = median(percent.mt, na.rm = TRUE),
+    mean_percent_mt = mean(percent.mt, na.rm = TRUE),
+    pct_mt_gt_5 = 100 * mean(percent.mt > 5, na.rm = TRUE),
+    pct_mt_gt_10 = 100 * mean(percent.mt > 10, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(batch, sample_id)
+
+as.data.frame(qc_by_sample)
+
+
+
+
+qc_by_batch <- data@meta.data %>%
+  group_by(batch) %>%
+  summarise(
+    n_cells = n(),
+    median_nCount_RNA = median(nCount_RNA, na.rm = TRUE),
+    mean_nCount_RNA = mean(nCount_RNA, na.rm = TRUE),
+    median_nFeature_RNA = median(nFeature_RNA, na.rm = TRUE),
+    mean_nFeature_RNA = mean(nFeature_RNA, na.rm = TRUE),
+    median_percent_mt = median(percent.mt, na.rm = TRUE),
+    mean_percent_mt = mean(percent.mt, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+as.data.frame(qc_by_batch)
+
+
+
+mt_genes <- grep("^mt-", rownames(data), value = TRUE, ignore.case = TRUE)
+length(mt_genes)
+mt_genes
+
+
+
+# Buen reparto de células, hay una muestra más baja pero potable. 
+# La mediana de counts por batch está casi clavada entre los 3
+# En genes lo mismo
+# La muestra del batch C parace buena, no desentona con las demás
+# El mitocondrial es muy bajo, filtraremos lo más extremo
+
+
+# Pre QC2. Compruebo cuantas celulas por muestra se pierden con los filtros que quiero aplicar, para ver si hay alguna muestra que se quede muy baja.
+# Busco desbalances parámetros de calidad del filtrado.
+
+
+
+data_before_qc2 <- data
+
+
+
+qc2_filter_check <- data_before_qc2@meta.data %>%
+  mutate(
+    pass_qc2 = nFeature_RNA > 300 &
+      nFeature_RNA < 8000 &
+      percent.mt < 10,
+    fail_low_features = nFeature_RNA <= 300,
+    fail_high_features = nFeature_RNA >= 8000,
+    fail_high_mt = percent.mt >= 10
+  ) %>%
+  group_by(sample_id, batch, group, DsRed, mouse_id, tet2_status, cell_context) %>%
+  summarise(
+    n_before = n(),
+    n_after = sum(pass_qc2),
+    n_removed = n_before - n_after,
+    pct_removed = 100 * n_removed / n_before,
+    n_low_features = sum(fail_low_features),
+    n_high_features = sum(fail_high_features),
+    n_high_mt = sum(fail_high_mt),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(pct_removed))
+
+as.data.frame(qc2_filter_check)
+
+
+
+# Tras DoubletFinder se aplicó un segundo filtrado de calidad:
+#nFeature_RNA > 300, nFeature_RNA < 8000 y percent.mt < 10.
+#El porcentaje de células removidas fue bajo en todas las muestras
+#(0.82–5.81%). La muestra KO3_DsRedP rescatada en batch C perdió solo
+#1.19% de células, sin evidencia de peor calidad global.
 
 # QC2 
 
-data$percent.mt <- PercentageFeatureSet(data, pattern = "^mt-")
+
 
 data <- SetIdent(data, value = "batch")
 
@@ -180,7 +338,7 @@ plot_grid(plot1,plot2, ncol=2)
 dev.off()
 
 
-data <- subset(data, subset = nFeature_RNA > 300 & nFeature_RNA < 7500 & percent.mt < 10)
+data <- subset(data, subset = nFeature_RNA > 300 & nFeature_RNA < 8000 & percent.mt < 10)
 
 
 data <- SetIdent(data, value = "batch")
@@ -199,67 +357,68 @@ plot_grid(plot1,plot2,plot3,plot4, ncol=2)
 dev.off()
 
 
-# Analysis
+## By Dsred
 
-##### Normalize
 
-#data<- NormalizeData(data)
-#data <- FindVariableFeatures(data, selection.method = "vst", nfeatures = 2000)
+data <- SetIdent(data, value = "DsRed")
 
-#data <- ScaleData(data, vars.to.regress = c("nCount_RNA"))
+png(paste0(outdir,"/QC2/QC2.After_filtering.DsRed.png"), width=1200, height=800)
+VlnPlot(data, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3, pt.size=0 , raster = FALSE)
+dev.off()
 
+
+
+
+##### Normalization and integration
+
+## Uso SCTransform para normalizar e integrar con Harmony para corregir batch.
+# Hay muy poco efecto batch apreciable, pero con SCT e integración nos aseguramos 
+#de que no haya ningún sesgo técnico. Además, la integración con Harmony me va 
+#a permitir hacer un clustering más robusto y una reducción de dimensionalidad 
+#más limpia para visualizar los datos.
 
 
 ### Scale
 
-options(future.globals.maxSize = 16 * 1024^3)  # 8 GiB
+options(future.globals.maxSize = 24 * 1024^5)
 
-# Ahora correr SCTransform
-data <- SCTransform(data, method = "glmGamPoi",
- verbose = TRUE, 
- vars.to.regress = c("percent.mt"),
- variable.features.n = 3000
- )
+data <- SCTransform(
+  data,
+  assay = "RNA",
+  vars.to.regress = "percent.mt",
+  variable.features.n = 4000
+)
 
-
-
-# Linear Reduction
-
-data <- RunPCA(data, features = VariableFeatures(object = data))
-
-
-png(paste0(outdir,"/QC2/ElbowPlot.Complete.png"), width=800, height=600)
-ElbowPlot(data)
-dev.off()
+data <- RunPCA(
+  data,
+  assay = "SCT",
+  npcs = 50
+)
 
 
-##### PCA
+data <- RunHarmony(
+  object = data,
+  group.by.vars = "batch",     # variable batch
+  reduction.use = "pca",
+  dims.use = 1:50,
+  reduction.name = "harmony"
+)
 
-PCA.data <- PCA(data)
-PCA.data[1]
-PCA.data[2]
-#14
+# Clustering over Harmony
+data <- FindNeighbors(data, reduction = "harmony", dims = 1:50)
+data <- FindClusters(data, resolution = c(0.6, 0.7, 0.8))
 
-
-# Haz un plot con los PCA por muestras y por tipos
-
-
-
-png(paste0(outdir,"/QC2/PCA.groups.png"), width=1800, height=800)
-DimPlot(data, reduction = "pca", group.by=c("orig.ident", "tag", "group", "batch"), raster = FALSE) 
-dev.off()
-
-#UMAP
-
-data <- FindNeighbors(data, dims = 1:30)
-
-
-data <- FindClusters(data, resolution = 0.8)
-
-data <- RunUMAP(data, dims = 1:30)
+# UMAP over Harmony
+data <- RunUMAP(
+  data,
+  reduction = "harmony",
+  dims = 1:50,
+  n.neighbors = 20,        # número de vecinos: alto para suavizar clusters grandes, bajo para subpoblaciones finas
+  min.dist = 0.4  # separación mínima: bajo (<0.3) → clusters más separados y definido
+)
 
 
-
+grep("snn_res", colnames(data@meta.data), value = TRUE)
 
 png(paste0(outdir,"/QC2/Violin.QC2.png"), width=1800, height=800)
 plot1 <- VlnPlot(data, features = "nCount_RNA", pt.size = 0, group.by = "seurat_clusters", raster = FALSE) +
@@ -274,108 +433,352 @@ plot3 <- VlnPlot(data, features = "percent.mt", pt.size = 0, group.by = "seurat_
 plot_grid(plot1, plot2, plot3, ncol = 1)
 dev.off()
 
+
+data <- SetIdent(data, value = "SCT_snn_res.0.8")
 png(paste0(outdir,"/QC2/Umap.data.png"), width=1800, height=2400)
 p1 <- DimPlot(data, reduction = "umap", label = T, raster = FALSE)
-p2 <- DimPlot(data, reduction = "umap", group.by = "group", raster = FALSE)
-p3 <- DimPlot(data, reduction = "umap", group.by = "tag", raster = FALSE)
+p2 <- DimPlot(data, reduction = "umap", group.by = "sample_id", raster = FALSE)
+p3 <- DimPlot(data, reduction = "umap", group.by = "tet2_status", raster = FALSE)
 p4 <-DimPlot(data, reduction = "umap", group.by = "batch", raster = FALSE)
-p5 <-DimPlot(data, reduction = "umap", group.by = "DsRed", raster = FALSE)
+p5 <-DimPlot(data, reduction = "umap", group.by = "cell_context", raster = FALSE)
 plot_grid(p1,p2,p3,p4,p5, ncol=2)
 dev.off()
 
 
-png(paste0(outdir,"/QC2/PCA.clusters.png"), width=1200, height=600)
-DimPlot(data, reduction = "pca", group.by = "seurat_clusters", label.size = 4, repel = TRUE, label = TRUE, raster = FALSE)
+
+table(data$SCT_snn_res.0.8, data$batch)
+table(data$SCT_snn_res.0.8, data$sample_id)
+table(data$SCT_snn_res.0.8, data$cell_context)
+
+
+
+qc_depth_by_dsred <- data@meta.data %>%
+  group_by(DsRed) %>%
+  summarise(
+    n_cells = n(),
+    median_nCount_RNA = median(nCount_RNA),
+    mean_nCount_RNA = mean(nCount_RNA),
+    median_nFeature_RNA = median(nFeature_RNA),
+    mean_nFeature_RNA = mean(nFeature_RNA),
+    median_percent_mt = median(percent.mt),
+    .groups = "drop"
+  )
+
+as.data.frame(qc_depth_by_dsred)
+
+
+
+
+qc_depth_by_sample <- data@meta.data %>%
+  group_by(sample_id, group, DsRed, batch, mouse_id, cell_context) %>%
+  summarise(
+    n_cells = n(),
+    median_nCount_RNA = median(nCount_RNA),
+    median_nFeature_RNA = median(nFeature_RNA),
+    median_percent_mt = median(percent.mt),
+    .groups = "drop"
+  ) %>%
+  arrange(group, mouse_id, DsRed)
+
+as.data.frame(qc_depth_by_sample)
+
+
+
+data <- SetIdent(data, value = "SCT_snn_res.0.8")
+png(paste0(outdir,"/QC2/violin.counts.png"), width=1200, height=1200)
+VlnPlot(
+  data,
+  features = c("nCount_RNA", "nFeature_RNA"),
+  group.by = "sample_id",
+  pt.size = 0,
+  ncol = 2
+, raster = FALSE) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 dev.off()
 
+
+
+depth_by_cluster_dsred <- data@meta.data %>%
+  group_by(SCT_snn_res.0.8, DsRed) %>%
+  summarise(
+    n_cells = n(),
+    median_nCount_RNA = median(nCount_RNA),
+    median_nFeature_RNA = median(nFeature_RNA),
+    .groups = "drop"
+  )
+
+as.data.frame(depth_by_cluster_dsred)
+
+
+data$cluster_res08 <- as.character(data$SCT_snn_res.0.8)
+
+
+comp_cluster <- data@meta.data %>%
+  as.data.frame() %>%
+  dplyr::count(
+    sample_id,
+    batch,
+    group,
+    DsRed,
+    mouse_id,
+    tet2_status,
+    cell_context,
+    cluster_res08,
+    name = "n"
+  ) %>%
+  dplyr::group_by(sample_id) %>%
+  dplyr::mutate(freq_total = 100 * n / sum(n)) %>%
+  dplyr::ungroup()
+
+as.data.frame(comp_cluster)
+
+
+
+
+write.csv(
+  comp_cluster,
+  file = file.path(outdir, "cluster_composition_by_sample_res08.csv"),
+  row.names = FALSE
+)
+
+
+
+png(paste0(outdir,"/QC2/comp.counts.png"), width=1200, height=1200)
+ggplot(
+  comp_cluster,
+  aes(x = sample_id, y = freq_total, fill = cluster_res08)
+) +
+  geom_col() +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  ylab("% cells per sample") +
+  xlab("Sample")
+dev.off()
+
+
+png(paste0(outdir,"/QC2/heatmap.cells.png"), width=1200, height=1200)
+ggplot(
+  comp_cluster,
+  aes(x = sample_id, y = cluster_res08, fill = freq_total)
+) +
+  geom_tile() +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  ylab("Cluster res 0.6") +
+  xlab("Sample") +
+  labs(fill = "% sample")
+dev.off()
+
+
+cluster_by_context <- comp_cluster %>%
+  dplyr::group_by(cell_context, cluster_res08) %>%
+  dplyr::summarise(
+    mean_freq = mean(freq_total),
+    sd_freq = sd(freq_total),
+    .groups = "drop"
+  )
+
+as.data.frame(cluster_by_context)
+
+
+png(paste0(outdir,"/QC2/boxplot.counts.png"), width=1200, height=1200)
+ggplot(
+  data@meta.data,
+  aes(x = DsRed, y = nCount_RNA)
+) +
+  geom_boxplot(outlier.size = 0.1) +
+  facet_wrap(~ SCT_snn_res.0.8, scales = "free_y") +
+  theme_bw()
+dev.off()
+
+data <- SetIdent(data, value = "SCT_snn_res.0.8")
+png(paste0(outdir,"/QC2/Umap.0.8.png"), width=1200, height=1200)
+DimPlot(data, reduction = "umap", raster = FALSE,label = TRUE, label.size = 4, repel = TRUE) 
+dev.off()
 
 
 data <- SetIdent(data, value = "seurat_clusters")
-png(paste0(outdir,"/QC2/Umap.tag.png"), width=2400, height=1200)
-DimPlot(data, reduction = "umap", split.by = "tag", ncol=4, raster = FALSE,
-pt.size = 0.5)       
- 
+png(paste0(outdir,"/QC2/seurat_clusters.png"), width=1200, height=1200)
+DimPlot(data, reduction = "umap", raster = FALSE,label = TRUE, label.size = 4, repel = TRUE) 
 dev.off()
 
 
 
-png(paste0(outdir,"/QC2/Umap.png"), width=1200, height=1200)
-DimPlot(data, reduction = "umap", ncol=4, raster = FALSE)
+data <- subset(data, subset = seurat_clusters == 13, invert=TRUE)
+
+
+png(paste0(outdir,"/QC2/PCA.groups.png"), width=1200, height=800)
+DimPlot(data, reduction = "pca", group.by=c("orig.ident", "DsRed", "group", "batch"), raster = FALSE) 
 dev.off()
 
 
 
-#### Checking batch effect
 
 
- 
-    # Aseguramos que las columnas existen en el metadata
-    meta <- data@meta.data %>%
-      dplyr::select(
-        nCount_RNA,
-        nFeature_RNA,
-        percent.mt,
-        batch,
-        tag,
-        group,
-        chimera
-      )
- 
-    # Crear función para resumir
-    summ_fun <- function(df, group_vars) {
-      df %>%
-        group_by(across(all_of(group_vars))) %>%
-        summarise(
-          nCells = n(),
-          mean_nCount = mean(nCount_RNA),
-          median_nCount = median(nCount_RNA),
-          sd_nCount = sd(nCount_RNA),
- 
-          mean_nFeature = mean(nFeature_RNA),
-          median_nFeature = median(nFeature_RNA),
-          sd_nFeature = sd(nFeature_RNA),
- 
-          mean_percentMT = mean(percent.mt),
-          median_percentMT = median(percent.mt),
-          sd_percentMT = sd(percent.mt),
- 
-          .groups = "drop"
-        )
-    }
- 
-    # Tabla agrupada por batch, tag, group y chimera
-    summary_all <- summ_fun(meta, c("batch", "tag", "group", "chimera"))
-    as.data.frame(summary_all)
+saveRDS(
+  data,
+  file = file.path(rsdir,"objects/seurat_QC2_SCT_Harmony_res08_validated.rds")
+)
+
+write.csv(
+  comp_cluster,
+  file = file.path(rsdir, "cluster_composition_by_sample_res08.csv"),
+  row.names = FALSE
+)
 
 
 
-saveRDS(data, paste0(rsdir,"objects/data.PreSingleR.rds"))
-
-data <-readRDS(paste0(rsdir,"objects/data.PreSingleR.rds"))
 
 
-data.harmony <- RunHarmony(
-data, 
-group.by.vars = "batch", 
-dims = 1:20,
-max.iter.harmony = 50)  
+data <- readRDS(file.path(rsdir,"objects/seurat_QC2_SCT_Harmony_res08_validated.rds"))
 
 
 
-data.harmony <- RunUMAP(data.harmony, reduction = "harmony", dims = 1:20)
-data.harmony <- FindNeighbors(data.harmony, reduction = "harmony", dims = 1:20)
-data.harmony <- FindClusters(data.harmony, resolution = 0.8)
+# Checking for inbalance in DsRed groups
+aggregate( nCount_RNA ~ batch + tag, data = data@meta.data, FUN = median )
+
+agg <- aggregate(
+  nCount_RNA ~ batch + tag,
+  data = data@meta.data,
+  FUN = median
+)
+
+agg <- agg[order(agg$tag), ]
 
 
 
-png(paste0(outdir,"/QC2/Umap.harmony.png"), width=1200, height=1200)
-DimPlot(data.harmony, raster = FALSE)
+# Extract metadata and features manually
+plot_data <- data.frame(
+  nCount_RNA = data[["nCount_RNA"]][,1],
+  PC_1 = Embeddings(data, "pca")[,1],  # make sure you have PC_1 in PCA embeddings
+  seurat_clusters = data$seurat_clusters
+)
+
+# Base scatter plot with ggplot
+p <- ggplot(plot_data, aes(x = nCount_RNA, y = PC_1, color = seurat_clusters)) +
+  geom_point(raster = TRUE, size = 0.5) +
+  ggtitle("nCount_RNA vs PC1")
+
+# Add cluster labels
+p <- LabelClusters(p, id = "seurat_clusters", label.size = 4, repel = TRUE)
+
+# Save to PNG
+png(paste0(outdir,"/QC2/count.PC1.png"), width=1200, height=800)
+print(p)
 dev.off()
 
 
-png(paste0(outdir,"/QC2/Umap.harmony.tag.png"), width=2800, height=1200)
-DimPlot(data.harmony, raster = FALSE,split.by = "tag", ncol=4)
+# Feature plots for QC metrics
+png(paste0(outdir,"/QC2/Umap.QC2.png"), width=2400, height=800)
+p1 <- FeaturePlot(data, features = "nCount_RNA", label=TRUE, raster = FALSE) & theme(plot.title = element_text(size=10))
+p2 <- FeaturePlot(data, features = "nFeature_RNA", label=TRUE, raster = FALSE) & theme(plot.title = element_text(size=10))
+p3 <- FeaturePlot(data, features = "percent.mt", label=TRUE, raster = FALSE) & theme(plot.title = element_text(size=10))
+plot_grid(p1,p2,p3, ncol=3)
 dev.off()
+
+
+## Cluster 13 for 0.8 is stromal al fibros
+data <- subset(data, subset = seurat_clusters == 13, invert=TRUE)
+
+
+saveRDS(data, paste0(soupx_dir,"QC1.rds"))
+data <- readRDS(paste0(soupx_dir,"QC1.rds"))
+
+
+### Dsred Batch validation
+
+
+png(paste0(outdir,"/QC2/clusters.png"), width=1800, height=800)
+
+p <- VlnPlot(
+  data,
+  features = c("nCount_SCT", "nFeature_SCT"),
+  group.by = "SCT_snn_res.0.8",
+  split.by = "DsRed",
+  pt.size = 0,
+  raster = FALSE
+) + theme(legend.position = "right")
+
+print(p)
+
+dev.off()
+
+
+
+png(paste0(outdir,"/QC2/clusters.WT.png"), width=1800, height=800)
+
+p <- VlnPlot(
+  subset(data, subset = group == "WT"),
+  features = c("nCount_SCT", "nFeature_SCT"),
+  group.by = "SCT_snn_res.0.8",
+  split.by = "DsRed",
+  pt.size = 0,
+  raster = FALSE
+) + theme(legend.position = "right")
+
+print(p)
+
+dev.off()
+
+
+
+png(paste0(outdir,"/QC2/clusters.KO.png"), width=1800, height=800)
+
+p <- VlnPlot(
+  subset(data, subset = group == "KO"),
+  features = c("nCount_RNA", "nFeature_RNA"),
+  group.by = "SCT_snn_res.0.8",
+  split.by = "DsRed",
+  pt.size = 0,
+  raster = FALSE
+) + theme(legend.position = "right")
+
+print(p)
+
+dev.off()
+
+
+
+
+aggregate(
+  cbind(nCount_RNA, nFeature_RNA) ~ group + seurat_clusters + DsRed,
+  data = data@meta.data,
+  FUN = median
+)
+
+
+table(data$SCT_snn_res.0.8, data$tag)
+prop <- prop.table(table(data$SCT_snn_res.0.8, data$tag), 1)
+
+
+
+
+df <- as.data.frame(table(data$SCT_snn_res.0.8, data$group))
+
+png(paste0(outdir,"/QC2/proportions.png"), width=1200, height=1200)
+ggplot(df, aes(x = Var1, y = Freq, fill = Var2)) +
+  geom_bar(stat = "identity", position = "fill") +
+  labs(x = "Cluster", y = "Proportion", fill = "Group") +
+  theme_classic()
+  dev.off()
+
+
+
+png(paste0(outdir,"/QC2/Umap1.png"), width=1800, height=1800)
+DimPlot(data, reduction = "umap", group.by=c("orig.ident", "tag", "group", "batch"), raster = FALSE) 
+dev.off()
+
+
+png(paste0(outdir,"/QC2/Umap2.png"), width=1800, height=1800)
+DimPlot(data, reduction = "umap", label = TRUE, raster = FALSE) 
+dev.off()
+
+
+png(paste0(outdir,"/QC2/Umap.split.png"), width=2200, height=1200)
+DimPlot(data, reduction = "umap", label = TRUE, raster = FALSE,
+split.by = "tag", ncol=4) 
+dev.off()
+
 
 
 
@@ -387,9 +790,9 @@ set.seed(123)
 n_cells <- 8000
 cells_to_keep <- c()
 
-for (group in unique(data.harmony$tag)) {
+for (group in unique(data$tag)) {
   # Subset de células por metadata
-  group_cells <- rownames(data.harmony@meta.data)[data.harmony@meta.data$tag == group]
+  group_cells <- rownames(data@meta.data)[data@meta.data$tag == group]
   
   if (length(group_cells) <= n_cells) {
     sampled_cells <- group_cells
@@ -401,51 +804,26 @@ for (group in unique(data.harmony$tag)) {
 }
 
 # Ahora sí crear el subset
-data_downsampled <- subset(data.harmony, cells = cells_to_keep)
+data_downsampled <- subset(data, cells = cells_to_keep)
 
 # Revisar número de células por grupo
 table(data_downsampled$tag)
 
 
 
-png(paste0(outdir,"/QC2/Umap.harmony.tag.downsampled.8k.png"), width=2800, height=1200)
+pdf(paste0(outdir,"/QC2/Umap.harmony.tag.downsampled.8k.pdf"), width=28, height=12)
 DimPlot(data_downsampled, raster = FALSE,split.by = "tag", ncol=4)
 dev.off()
 
 
-data_downsampled <- SetIdent(data_downsampled, value = "Clustering.Round2")
-pdf(paste0(outdir,"/QC2/Umap.harmony.chimera.downsampled.8k.pdf"), width=18, height=12)
-DimPlot(data_downsampled, raster = FALSE,split.by = "chimera", ncol=2, cols= nora.colors)
+pdf(paste0(outdir,"/QC2/Umap.harmony.chimera.downsampled.8k.pdf"), width=16, height=12)
+DimPlot(data_downsampled, raster = FALSE,split.by = "chimera", ncol=2)
 dev.off()
 
-png(paste0(outdir,"/QC2/Umap.harmony.group.downsampled.8k.png"), width=1000, height=800)
+pdf(paste0(outdir,"/QC2/Umap.harmony.group.downsampled.8k.pdf"), width=16, height=12)
 DimPlot(data_downsampled, raster = FALSE,group.by = "group")
 dev.off()
 
-
-
-png(paste0(outdir,"/QC2/violin.Il1b.down.png"), width=3800, height=1000)
-VlnPlot(
-  data_downsampled,
-  features = "Il1b",
-  group.by = "tag",
-  split.by = "seurat_clusters",
-  pt.size = 0
-)
-dev.off()
-
-
- pdf(paste0(outdir,"/QC2/Umap_Markers.Il.pdf"), width=16, height=16)
-FeaturePlot_scCustom(data_downsampled, 
-features = c("Il1b", "Il1a" , "Il16"), split.by="group")
-dev.off()
-
-
-
- pdf(paste0(outdir,"/QC2/Umap_Markers.Il.ch.pdf"), width=32, height=16)
-FeaturePlot_scCustom(data_downsampled, 
-features = c("Il1b", "Il1a" , "Il16"), split.by="chimera")
-dev.off()
 
 
 
@@ -456,7 +834,7 @@ dev.off()
 ## SingleR Cell identification
 
 
-sce <- as.SingleCellExperiment(DietSeurat(data.harmony, assays = c("SCT")))
+sce <- as.SingleCellExperiment(DietSeurat(data, assays = c("SCT")))
 ref <- celldex::ImmGenData()
 
 ref.main <- SingleR(test = sce,assay.type.test = 1,ref = ref,labels = ref$label.main)
@@ -464,108 +842,87 @@ ref.main <- SingleR(test = sce,assay.type.test = 1,ref = ref,labels = ref$label.
 ref.fine <- SingleR(test = sce,assay.type.test = 1,ref = ref,labels = ref$label.fine)
 
 
-data.harmony@meta.data$Cell_type.Image <- ref.main$pruned.labels
-data.harmony@meta.data$Cell_type.Image.fine <- ref.fine$pruned.labels
+data@meta.data$Cell_type.Image <- ref.main$pruned.labels
+data@meta.data$Cell_type.Image.fine <- ref.fine$pruned.labels
 
 
 
 
-data.harmony <- SetIdent(data.harmony, value = "Cell_type.Image")
+data <- SetIdent(data, value = "Cell_type.Image")
 png(paste0(outdir,"/QC2/Umap_SingleR.Image.Fine.png"), width=2200, height=2400)
-data.harmony <- SetIdent(data.harmony, value = "seurat_clusters")
-p0 <- DimPlot_scCustom(data.harmony, split.by="orig.ident", label=T, repel=T,
+data.harmony <- SetIdent(data, value = "SCT_snn_res.0.8")
+p0 <- DimPlot_scCustom(data, split.by="orig.ident", label=T, repel=T,
 label.size=4, ggplot_default_colors=T, raster = FALSE) + NoLegend()
-data <- SetIdent(data.harmony, value = "Cell_type.Image")
-p1 <- DimPlot_scCustom(data.harmony, split.by="orig.ident", label=T, repel=T,
+data <- SetIdent(data, value = "Cell_type.Image")
+p1 <- DimPlot_scCustom(data, split.by="orig.ident", label=T, repel=T,
 label.size=4, ggplot_default_colors=T, raster = FALSE) + NoLegend()
-p2 <- DimPlot(data.harmony, split.by="orig.ident",group.by = "group", raster = FALSE)
-p3 <- DimPlot(data.harmony, split.by="orig.ident",group.by = "tag", raster = FALSE)
+p2 <- DimPlot(data, split.by="orig.ident",group.by = "group", raster = FALSE)
+p3 <- DimPlot(data, split.by="orig.ident",group.by = "tag", raster = FALSE)
 plot_grid(p0,p1,p2,p3, ncol=1)
 dev.off() 
 
 
 
-saveRDS(data.harmony, paste0(rsdir,"objects/data.QC.harmony.SingleR.rds"))
-data.harmony <- readRDS(paste0(rsdir,"objects/data.QC.harmony.SingleR.rds"))
+saveRDS(data, paste0(rsdir,"/objects/seurat_QC2_SCT_Harmony_res08_validated.SingleR.rds"))
+data <- readRDS(paste0(rsdir,"/objects/seurat_QC2_SCT_Harmony_res08_validated.SingleR.rds"))
 
 
 
-data.harmony <- SetIdent(data.harmony, value = "Cell_type.Image.fine")
+data<- SetIdent(data, value = "Cell_type.Image.fine")
 png(paste0(outdir,"/QC2/Umap_SingleR.png"), width=1800, height=800)
-DimPlot_scCustom(data.harmony, reduction = "umap", label=T, repel=T,
+DimPlot_scCustom(data, reduction = "umap", label=T, repel=T,
 label.size=4, ggplot_default_colors=T) + NoLegend()
 dev.off()
 
-png(paste0(outdir,"/QC2/Umap_Markers.png"), width=1800, height=1400)
-FeaturePlot_scCustom(data.harmony, features= c("Ptprc","Csf3r", "S100a8", "C1qa", "Ace","Csf1r", "Cd3e", "Cd4",
-"Cd8a", "Il1b", "Pi16","Pdgfra", "Pecam1", "Col1a1", "Ly6c2", "Trem2", "Arg1", "Mrc1"), reduction = "umap")
+png(paste0(outdir,"/QC2/Umap_Markers.png"), width=1800, height=2000)
+FeaturePlot_scCustom(data, features= c("Trem1","Arg1", "S100a8", "C1qa", "Ly6c2","Fn1", "Vegfa", "Cd4",
+"Cd8a", "Il1b", "Nrp2","Pdgfra", "Mmp9", "Ifit3", "Mrc1", "Gas6", "Ciita", "Siglece", "Ccl12", "H2-D1", "Col1a1", "Ccl8",
+"Nlrp3", "Foxp3", "Il2ra", "Icos", "Mki67"), reduction = "umap")
 dev.off()
 
 
 
 
 png(paste0(outdir,"/QC2/Umap_Markers.split.png"), width=3200, height=900)
-FeaturePlot_scCustom(data.harmony, features= "Il1b", reduction = "umap", split.by="chimera")
+FeaturePlot_scCustom(data, features= "Il1b", reduction = "umap", split.by="chimera")
 dev.off()
 
 
 
-pdf(paste0(outdir,"/QC2/Umap_Markers.pdf"), width=18, height=14)
-FeaturePlot_scCustom(data.harmony, features= c("Ptprc","Csf3r", "Cd9", "Spp1", "Cd163","Csf1r", "H2-Aa", "Adgre1",
-"H2-Eb1", "Il1b", "Mki67","Mmp9", "Ccr2", "Cd3e", "Vcan", "Ly6c2", "Arg1", "Mrc1", "Adgre4", "Gpnmb"), reduction = "umap")
-dev.off()
-
-
-
-pdf(paste0(outdir,"/QC2/Umap_Markers.IFN.pdf"), width=14, height=24)
-FeaturePlot_scCustom(data.harmony, features= c("Ifit3","Ifit1", "Ifit2", "Il1b", "Oas2", "Irf7"), reduction = "umap",
-split.by="group")
-dev.off()
-
-
- pdf(paste0(outdir,"/QC2/Umap_Markers.tcells.pdf"), width=10, height=10)
-FeaturePlot_scCustom(data.harmony, 
-features = c("Cd8a", "Gzmb" , "Cd8b1", "Prf1", "Cd3e", "Cd4")) & theme(plot.title = element_text(size=10))
- dev.off()
 
 
 
 
 
- pdf(paste0(outdir,"/QC2/Umap_Markers.tcells2.pdf"), width=12, height=22)
-FeaturePlot_scCustom(data.harmony, 
-features = c("Cd8a", "Gzmb" , "Cd8b1", "Prf1", "Cd3e", "Cd4"), split.by="group") & theme(plot.title = element_text(size=10))
- dev.off()
 
 
 
 
 
- png(paste0(outdir,"/QC2/Umap_Markers.scratch.png"), width=1200, height=2600)
-FeaturePlot_scCustom(data.harmony, 
-features = c("Anxa1", "Actn1", "Npr2", "Arg1"), split.by="group") & theme(plot.title = element_text(size=10))
- dev.off()
 
 
- png(paste0(outdir,"/QC2/Umap_Markers.3.png"), width=1200, height=2800)
-FeaturePlot_scCustom(data.harmony, 
-features = c("Arg1", "Mmp12" , "Inhba", "Slc7a2"
-, "Spp1", "Sdc1", "Trem1", "Nrp1", "Il1a"
-), split.by="group") & theme(plot.title = element_text(size=10))
- dev.off()
+
+
+
+
+
+
+
+############################### hasta aqui 
+
 
 
 ## DEG
 
 
 # Establecer identidades con Seurat >=4
-Idents(data.harmony) <- "seurat_clusters"
+Idents(data) <- "SCT_snn_res.0.8"
 
 # Encontrar marcadores
 markers <- FindAllMarkers(
-  object =data.harmony,
+  object =data,
   only.pos = TRUE,
-  min.pct = 0.1,
+  min.pct = 0.2,
   logfc.threshold = 0.25
 )
 
@@ -576,153 +933,186 @@ head(markers)
 
 top30_per_cluster <- markers %>%
   group_by(cluster) %>%
-  slice_min(order_by = p_val_adj, n = 50, with_ties = FALSE) %>%
+  slice_min(order_by = p_val_adj, n = 30, with_ties = FALSE) %>%
   ungroup()
 
 
 as.data.frame(top30_per_cluster)
 
 
+
+
 write.table(top30_per_cluster, paste0(rsdir,"table.clusters.markers.top30.seurat_clusters.harmony.tsv"), sep='\t')
 
+top30_per_cluster <- read.table(paste0(rsdir,"table.clusters.markers.top30.seurat_clusters.harmony.tsv"), header=T, sep='\t')
+
+as.data.frame(top30_per_cluster)
+
+
+data$Cluster <- NA
+data$Cluster[data$seurat_clusters == 0] <- "Trem1|Ptgs2|Plaur|F10 Mac"
+data$Cluster[data$seurat_clusters == 1] <- "MHCII|Mgl2 Mac"
+data$Cluster[data$seurat_clusters == 2] <- "MHCII|Siglec Mac"
+data$Cluster[data$seurat_clusters == 3] <- "Nrp2|Emp1 Mac"
+data$Cluster[data$seurat_clusters == 4] <- "Cd8 Effector"
+data$Cluster[data$seurat_clusters == 5] <- "IFN Mac"
+data$Cluster[data$seurat_clusters == 6] <- "Gas6|Folr2 Mac"
+data$Cluster[data$seurat_clusters == 7] <- "Nlrp3|Vegfa Mac"
+data$Cluster[data$seurat_clusters == 8] <- "Treg"
+data$Cluster[data$seurat_clusters == 9] <- "Monocytes Ly6c2Hi"
+data$Cluster[data$seurat_clusters == 10] <- "MHCII|Siglec Mac"
+data$Cluster[data$seurat_clusters == 11] <- "Neutrophils"
+data$Cluster[data$seurat_clusters == 12] <- "Arg1|Spp1|Mmp12|Il1a Mac"
+data$Cluster[data$seurat_clusters == 14] <- "Cd4 Naive"
+data$Cluster[data$seurat_clusters == 15] <- "DCs"
+data$Cluster[data$seurat_clusters == 16] <- "Cd8 Cytotoxic"
+data$Cluster[data$seurat_clusters == 17] <- "Mki67 Mac"
+data$Cluster[data$seurat_clusters == 18] <- "Monocytes Ly6c2Lo"
+data$Cluster[data$seurat_clusters == 19] <- "DCs"
+data$Cluster[data$seurat_clusters == 20] <- "B cells"
+data$Cluster[data$seurat_clusters == 21] <- "Mmp9|Ctsk Mac"
+data$Cluster[data$seurat_clusters == 22] <- "DCs"
+data$Cluster[data$seurat_clusters == 23] <- "Saa3 Mac"
+data$Cluster[data$seurat_clusters == 24] <- "Activated B cells"
+data$Cluster[data$seurat_clusters == 25] <- "NK"
+data$Cluster[data$seurat_clusters == 26] <- "Early TAMs"
+data$Cluster[data$seurat_clusters == 27] <- "Mastocytes"
+data$Cluster[data$seurat_clusters == 28] <- "PDcs" 
 
 
 
-
-
-data.harmony$Cluster <- NA
-data.harmony$Cluster[data.harmony$seurat_clusters == 0] <- "MHCII|H2-D Mac"
-data.harmony$Cluster[data.harmony$seurat_clusters == 1] <- "MHCII|Siglec Mac"
-data.harmony$Cluster[data.harmony$seurat_clusters == 2] <- "Mrc1|C1qc|Cbr2|Gas6 Mac"
-data.harmony$Cluster[data.harmony$seurat_clusters == 3] <- "Mrc1|C1qc|Cbr2|Gas6 Mac"
-data.harmony$Cluster[data.harmony$seurat_clusters == 4] <- "Cd8 T cells"
-data.harmony$Cluster[data.harmony$seurat_clusters == 5] <- "Trem1|Ptgs2|Plaur|Celc4e Mac"
-data.harmony$Cluster[data.harmony$seurat_clusters == 6] <- "Fn1|Vegfa Mac"
-data.harmony$Cluster[data.harmony$seurat_clusters == 7] <- "Arg1|Spp1|Mmp12|Mmp19|Il1a Mac"
-data.harmony$Cluster[data.harmony$seurat_clusters == 8] <- "IFN Mac"
-data.harmony$Cluster[data.harmony$seurat_clusters == 9] <- "Mrc1|C1qc|Cbr2|Gas6 Mac"
-data.harmony$Cluster[data.harmony$seurat_clusters == 10] <- "Ly6c|Ms4ac Monocytes"
-data.harmony$Cluster[data.harmony$seurat_clusters == 11] <- "Cd4"
-data.harmony$Cluster[data.harmony$seurat_clusters == 12] <- "Ly6c|Ms4ac Monocytes"
-data.harmony$Cluster[data.harmony$seurat_clusters == 13] <- "DCs" 
-data.harmony$Cluster[data.harmony$seurat_clusters == 14] <- "Neutrophils"
-data.harmony$Cluster[data.harmony$seurat_clusters == 15] <- "Npr2|Actn1 Mac" 
-data.harmony$Cluster[data.harmony$seurat_clusters == 16] <- "Cd4"
-data.harmony$Cluster[data.harmony$seurat_clusters == 17] <- "NK" 
-data.harmony$Cluster[data.harmony$seurat_clusters == 18] <- "Remove"
-data.harmony$Cluster[data.harmony$seurat_clusters == 19] <- "B cells" 
-data.harmony$Cluster[data.harmony$seurat_clusters == 20] <- "Cd8" 
-data.harmony$Cluster[data.harmony$seurat_clusters == 21] <- "Remove"
-data.harmony$Cluster[data.harmony$seurat_clusters == 22] <- "Mmp9|Ctsk Mac"  
-data.harmony$Cluster[data.harmony$seurat_clusters == 23] <- "DCs"
-data.harmony$Cluster[data.harmony$seurat_clusters == 24] <- "Mmp9|Ctsk Mac"
-data.harmony$Cluster[data.harmony$seurat_clusters == 25] <- "Activated B cells"
-data.harmony$Cluster[data.harmony$seurat_clusters == 26] <- "Mastocytes"
-
-
-
-
-data.harmony <- subset(data.harmony, subset = (Cluster == "Remove"), invert=TRUE)
 
 cluster_order <- c(
-  # --- MONOCITOS & TAMs (ROJOS) ---
-  "Ly6cHi Monocytes",
-  "Ly6cLo Monocytes",
-  "Early IFN|MHCII-TAMs",
-  "Nrg1|Cdh1 Mac",
-  "Trem1|Ptgs2|Plaur|Celc4e Mac",
-  "Mrc1|C1qc|Cbr2|Gas6 Mac",   # amarillo brillante (TAM residentes)
-  "Arg1|Spp1|Mmp12|Mmp19|Il1a Mac", # verde TAM reparadores
-  "Npr2|Actn1 Mac",   # verde lima (TAM estructurales)
-  "Mmp9|Ctsk Mac",   # verde botella (remodelado matriz)
-  "IFN Mac",   # morado claro (TAM interferón maduros)
-  "Fn1|Vegfa Mac",   # naranja angiogénico
-  "MHCII|Siglec Mac",   # azul cobalto (antigen presenting)
-  "MHCII|H2-D Mac",   # azul acero
+  # MONOCITOS & TAMs
+  "Monocytes Ly6c2Hi",
+  "Monocytes Ly6c2Lo",
+  "IFN Mac",
+  "Trem1|Ptgs2|Plaur|F10 Mac",
+  "MHCII|Mgl2 Mac",
+  "MHCII|Siglec Mac",
+  "Nrp2|Emp1 Mac",
+  "Mmp9|Ctsk Mac",
+  "Gas6|Folr2 Mac",
+  "Saa3 Mac",
+  "Arg1|Spp1|Mmp12|Il1a Mac",
+  "Mki67 Mac",
+  "Nlrp3|Vegfa Mac",
 
+  # LINFOIDES
+  "Cd8 Effector",
+  "Cd8 Cytotoxic",
+  "Cd4 Naive",
+  "Treg",
+  "Activated B cells",
+  "B cells",
   
-  "Cd8",   # turquesa
-  "Cd4",   # rosa fuerte
-  "NK",   # violeta oscuro
-  "Activated B cells",   # fucsia intenso
-  "B cells",   # rojo intenso
-
-  # --- INNATAS ---
-  "Neutrophils",   # azul fuerte
-  "DCs",   # azul claro
-  "Mastocytes"    # verde saturado
+  # INNATAS
+  "Neutrophils",
+  "DCs",
+  "PDcs",
+  "NK",
+  "Mastocytes",
+  
+  # Early TAMs
+  "Early TAMs"
 )
 
-
-
-
+# --- PALETA DE COLORES ---
 nora.colors <- c(
-  # --- MONOCITOS & TAMs (ROJOS) ---
-  "Ly6cHi Monocytes"     = "#FF0000",  # Rojo inflamatorio puro
-  "Ly6cLo Monocytes"     = "#FF6A6A",  # Rojo salmón transición
-  "Early IFN|MHCII-TAMs"       = "#B22222",  # Rojo vino (pre-TAM IFN)
-  "Nrg1|Cdh1 Mac"              =  "#5F9EA0",
-  "Trem1|Ptgs2|Plaur|Celc4e Mac" = "#EE7942",   # naranja vivo (inflam. activados)
-  "Mrc1|C1qc|Cbr2|Gas6 Mac"      = "#FFD92F",   # amarillo brillante (TAM residentes)
-  "Arg1|Spp1|Mmp12|Mmp19|Il1a Mac" = "#4DAF4A", # verde TAM reparadores
-  "Npr2|Actn1 Mac"       = "#A6D854",   # verde lima (TAM estructurales)
-  "Mmp9|Ctsk Mac"        = "#00723F",   # verde botella (remodelado matriz)
-  "IFN Mac"              = "#C080FF",   # morado claro (TAM interferón maduros)
-  "Fn1|Vegfa Mac"        = "#FFA500",   # naranja angiogénico
-  "MHCII|Siglec Mac"     = "#1E90FF",   # azul cobalto (antigen presenting)
-  "MHCII|H2-D Mac"      = "#4682B4",   # azul acero
-
-  # --- CÉLULAS LINFOIDES ---
-  "Cd8"          = "#00BFC4",   # turquesa
-  "Cd4"          = "#FF69B4",   # rosa fuerte
-  "NK"                   = "#AB82FF",   # violeta oscuro
-  "Activated B cells"    = "#FF1493",   # fucsia intenso
-  "B cells"              = "#DC143C",   # rojo intenso
-
-  # --- INNATAS ---
-  "Neutrophils"          = "#4876FF",   # azul fuerte
-  "DCs"                  = "#87CEEB",   # azul claro
-  "Mastocytes"           = "#3CB371"    # verde saturado
+  # MONOCITOS & TAMs
+  "Monocytes Ly6c2Hi"             = "#FF0000",
+  "Monocytes Ly6c2Lo"             = "#FF6347",
+  "IFN Mac"                        = "#C080FF",
+  "Trem1|Ptgs2|Plaur|F10 Mac"     = "#EE7942",
+  "MHCII|Mgl2 Mac"                 = "#4682B4",
+  "MHCII|Siglec Mac"               = "#1E90FF",
+  "Nrp2|Emp1 Mac"                  = "#A6D854",
+  "Mmp9|Ctsk Mac"                  = "#00723F",
+  "Gas6|Folr2 Mac"                 = "#FFD700",
+  "Saa3 Mac"                        = "#FFA500",
+  "Arg1|Spp1|Mmp12|Il1a Mac"      = "#4DAF4A",
+  "Mki67 Mac"                       = "#DA70D6",
+  "Nlrp3|Vegfa Mac"              = "#5f3121",
+  
+  # LINFOIDES
+  "Cd8 Effector"                    = "#00BFC4",
+  "Cd8 Cytotoxic"                   = "#20B2AA",
+  "Cd4 Naive"                       = "#FF69B4",
+  "Treg"                             = "#FFB6C1",
+  "Activated B cells"               = "#FF1493",
+  "B cells"                          = "#DC143C",
+  
+  # INNATAS
+  "Neutrophils"                     = "#4876FF",
+  "DCs"                              = "#87CEEB",
+  "PDcs"                             = "#7FFFD4",
+  "NK"                               = "#AB82FF",
+  "Mastocytes"                       = "#3CB371",
+  
+  # Early TAMs
+  "Early TAMs"                       = "#FFA07A"
 )
 
 
 
 
-data.harmony$Cluster <- factor(data.harmony$Cluster, levels = cluster_order)
+data$Cluster <- factor(data$Cluster, levels = cluster_order)
+
+data <- SetIdent(data, value = "Cluster")
+png(paste0(outdir,"/QC2/Umap.Clusterized1.png"), width=1400, height=1200)
+DimPlot(data, raster = FALSE, cols = nora.colors, label=T, repel=T, label.size=4,
+pt.size=0.5) + NoLegend()
+dev.off()
 
 
 
+data <- SetIdent(data, value = "Cluster")
+png(paste0(outdir,"/QC2/Umap.Clusterized1.legend.png"), width=1400, height=1200)
+DimPlot(data, raster = FALSE, cols = nora.colors,
+pt.size=0.5)
+dev.off()
 
-saveRDS(data.harmony, paste0(rsdir,"objects/data.harmony.Clusterized.rds"))
-data.harmony <- readRDS(paste0(rsdir,"objects/data.harmony.Clusterized.rds"))
+
+
+saveRDS(data, paste0(rsdir,"/objects/seurat_QC2_SCT_Harmony_res08_validated.SingleR.clusterized.rds"))
 
 
 
 ### Adding monocytes subclustering
 
-mon.annotation <- read.csv(paste0(outdir,"/Subclustering.Monocytes2/subclustering_monocytes_annotations.csv"))
+mon.annotation <- read.csv(paste0(outdir,"/Subclustering.Monocytes/subclustering_monocytes_annotations.csv"))
 
 # Asegura que el índice son los barcodes
 rownames(mon.annotation) <- mon.annotation$barcode
 mon.annotation$barcode <- NULL
 
 # Agregar metadata al objeto global
-data.harmony<- AddMetaData(data.harmony, mon.annotation)
+data<- AddMetaData(data, mon.annotation)
 
 
 
 # Crear la nueva columna como character para que permita nuevos valores
-data.harmony$Clustering.Round2 <- as.character(data.harmony$Cluster)
+data$Clustering.Round2 <- as.character(data$Cluster)
 
 # Reasignar según tus subclusters refinados
-data.harmony$Clustering.Round2[data.harmony$Subclustering.Mon == "Ly6cHi Monocytes"] <- "Ly6cHi Monocytes"
-data.harmony$Clustering.Round2[data.harmony$Subclustering.Mon == "Ly6cLo Monocytes"] <- "Ly6cLo Monocytes"
-data.harmony$Clustering.Round2[data.harmony$Subclustering.Mon == "Early IFN-TAMs"] <- "Early IFN|MHCII-TAMs"
-data.harmony$Clustering.Round2[data.harmony$Subclustering.Mon == "Nrg1|Cdh1 Macs"] <- "Trem1|Ptgs2|Plaur|Celc4e Mac"
+data$Clustering.Round2[data$Subclustering.Mon == "Ly6c2Hi Monocytes"] <- "Ly6cHi Monocytes"
+data$Clustering.Round2[data$Subclustering.Mon == "Ly6c2Lo Monocytes"] <- "Ly6cLo Monocytes"
+data$Clustering.Round2[data$Subclustering.Mon == "Early IFN TAMs"] <- "Early IFN|MHCII-TAMs"
+data$Clustering.Round2[data$Subclustering.Mon == "Nrg1|Cdh1 Macs"] <- "Trem1|Ptgs2|Plaur|Celc4e Mac"
 
 
 # Convertimos de vuelta a factor, ya con todos los niveles presentes
-data.harmony$Clustering.Round2 <- factor(data.harmony$Clustering.Round2)
+data$Clustering.Round2 <- factor(data$Clustering.Round2)
+
+
+
+data <- SetIdent(data, value = "Clustering.Round2")
+png(paste0(outdir,"/QC2/Umap.Clusterized.check.legend.png"), width=1400, height=1200)
+DimPlot(data, raster = FALSE, cols = nora.colors,
+pt.size=0.5)
+dev.off()
+
+
 
 
 #####
@@ -2356,5 +2746,3 @@ resumen_total <- bind_rows(resumen_RNA, resumen_SCT)
 
 print(resumen_total)
 write.csv(resumen_total, "resumen_por_muestra.csv", row.names = FALSE)
-
-

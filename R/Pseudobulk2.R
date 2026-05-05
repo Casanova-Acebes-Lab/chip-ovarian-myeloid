@@ -6,12 +6,11 @@ library(ggrepel)
 library(Matrix)
 library(limma)
 library(edgeR)
-library(Matrix.utils)
 library(dplyr)
-library(variancePartition)
 library(SummarizedExperiment)
 library(BiocParallel)
 library(Matrix.utils)
+
 
 
 
@@ -35,8 +34,7 @@ source("R/Functions.R")
 
 # Read data
 
-data <- readRDS(paste0(rsdir,"objects/data.macrophages.Clusterized2.rds"))
-
+data <- readRDS(paste0(rsdir,"objects/data.Clustering.Round1.rds"))
 
 
 
@@ -129,7 +127,7 @@ dev.off()
 
 
 # Ly6cHi_Monocytes
-Ly6cHi_Monocytes <- run_pseudobulk_analysis(data, "Ly6cHi Monocytes", outdir, rsdir)
+Ly6cHi_Monocytes <- run_pseudobulk_analysis(data, "Ly6c2Hi Monocytes", outdir, rsdir)
 
 Ly6cHi_Monocytes[[3]]
 head(Ly6cHi_Monocytes[[2]], n=200)

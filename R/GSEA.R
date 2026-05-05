@@ -194,9 +194,9 @@ dev.off()
 
 
 
-p <- plot_gsea(GSEA.Macros@result, title = "Macrophages All clusters. KO vs WT")
+p <- plot_gsea2(GSEA.Macros@result, title = "Macrophages All clusters. KO vs WT")
 
-pdf(paste0(outdir,"/GSEA/All.pdf"), width = 10, height = 16)
+pdf(paste0(outdir,"/GSEA/All2.pdf"), width = 12, height = 14)
 print(p)
 dev.off()
 

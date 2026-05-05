@@ -47,6 +47,7 @@ return(data)
 
 # Función para procesar una librería
 process_library <- function(base_dir, output_dir) {
+
   
   if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
   
@@ -161,25 +162,32 @@ return(p)
 
 
 
-
 read.data <- function(path, sample, group, DsRed, library, batch, chimera){
-data<- readRDS(paste0(datadir,path))
-data$tag <- paste0(sample)
-data$group <- group
-data$DsRed <- DsRed
-data$orig.ident <- library
-data$batch <- batch
-data$chimera <- chimera
-data <- RenameCells(data, add.cell.id = sample)  
 
- if (ncol(data@meta.data) >= 6) {
+  if (!startsWith(path, "/")) {
+    path <- paste0(datadir, path)
+  }
+
+  data <- readRDS(path)
+
+  data$tag <- paste0(sample)
+  data$group <- group
+  data$DsRed <- DsRed
+  data$orig.ident <- library
+  data$batch <- batch
+  data$chimera <- chimera
+  data <- RenameCells(data, add.cell.id = sample)
+
+  if (ncol(data@meta.data) >= 6) {
     colnames(data@meta.data)[6] <- "pANN.doublet"
   }
   if (ncol(data@meta.data) >= 7) {
     colnames(data@meta.data)[7] <- "DF.class"
   }
+
   return(data)
 }
+
 
 
 
@@ -228,7 +236,7 @@ GSEA <- function(data) {
   gseGO_result <- gseGO(geneList = gene_metric,
                         ont = "BP",
                         OrgDb = org.Mm.eg.db,
-                        minGSSize = 150,
+                        minGSSize = 50,
                         maxGSSize = 500,
                         eps = 1e-20,
                         nPermSimple = 10000,
@@ -238,7 +246,7 @@ GSEA <- function(data) {
   
   # Simplificar GO (eliminar términos redundantes)
   gseGO_result <- simplify(gseGO_result,
-                           cutoff = 0.9,
+                           cutoff = 0.6,
                            by = "p.adjust",
                            select_fun = min)
   
@@ -351,6 +359,50 @@ plot_gsea <- function(gsea_df, title = "GSEA Plot") {
 }
 
 
+plot_gsea2 <- function(gsea_df, title = "GSEA Plot") {
+  library(dplyr)
+  library(ggplot2)
+
+  # Seleccionar los 10 más altos y 10 más bajos NES
+  top_up <- gsea_df %>%
+    dplyr::filter(NES > 0) %>%
+    dplyr::arrange(dplyr::desc(NES)) %>%
+    head(10)
+  
+  top_down <- gsea_df %>%
+    dplyr::filter(NES < 0) %>%
+    dplyr::arrange(NES) %>%  # NES más negativo primero
+    head(10)
+
+  # Combinar
+  gsea_plot_df <- bind_rows(top_up, top_down) %>%
+    mutate(
+      NES_sign = ifelse(NES > 0, "Positive", "Negative"),
+      NES_sign = factor(NES_sign, levels = c("Positive", "Negative"))
+    ) %>%
+    # Ordenar Description para que positivos estén arriba y negativos abajo
+    arrange(desc(NES)) %>%
+    mutate(Description = factor(Description, levels = rev(Description)))
+
+  # Plot de barras horizontal
+  ggplot(gsea_plot_df, aes(x = Description, y = NES, fill = NES_sign)) +
+    geom_col() +
+    scale_fill_manual(values = c("Positive" = "red", "Negative" = "blue")) +
+    geom_hline(yintercept = 0, color = "black", linewidth = 0.5) +  # eje cero
+    coord_flip() +
+    labs(
+      x = "Pathway",
+      y = "Normalized Enrichment Score (NES)",
+      title = title
+    ) +
+    theme_classic() +
+    theme(
+      axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+      legend.position = "none"
+    )
+}
+
+
 
 
 
@@ -359,8 +411,9 @@ plot_gsea <- function(gsea_df, title = "GSEA Plot") {
 # --------------------------------------------
 pseudobulk_cluster <- function(seurat_obj, cluster_name, cluster_col="Clustering.Round2", sample_col="tag"){
   # Matriz de counts raw
-  
-  counts <- GetAssayData(seurat_obj, assay="RNA", slot="counts")
+
+
+  counts <- GetAssayData(seurat_obj, assay="RNA", layer="counts")
   meta   <- seurat_obj@meta.data
   
   # Seleccionar células del cluster

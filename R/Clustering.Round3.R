@@ -8,7 +8,7 @@ library(ggplot2)
 library(RPresto)
 library("scProportionTest")
 library(ggrepel)
-library(stringr)
+
 
 
 
@@ -108,6 +108,8 @@ data$Clustering.Round3 <- factor(data$Clustering.Round3)
 data$type <- paste(data$group, data$DsRed)
 
 
+saveRDS(data, paste0(rsdir,"objects/data.Clusterized.Round3.rds"))
+data <- readRDS(paste0(rsdir,"objects/data.Clusterized.Round3.rds"))
 
 #### Plots 
 
@@ -322,6 +324,8 @@ Idents(mac) <- "cluster_condition"
 
 
 Idents(mac) <- "Clustering.Round3"
+
+Idents(data) <- "Clustering.Round3"
 
 markers_round3 <- FindAllMarkers(
   mac,
@@ -646,4 +650,717 @@ VlnPlot(
   raster = FALSE
 )
 
+dev.off()
+
+
+
+
+# 1) Receptores de interferón
+ifn_receptores <- c(
+  "Ifnar1",
+  "Ifnar2",
+  "Ifngr1",
+  "Ifngr2",
+  "Ifnlr1",
+  "Il10rb"
+)
+
+# 2) Genes productores de interferón
+ifn_productores <- c(
+  # IFN tipo I
+  "Ifna1",
+  "Ifna2",
+  "Ifna4",
+  "Ifna5",
+  "Ifna6",
+  "Ifna7",
+  "Ifna8",
+  "Ifna12",
+  "Ifna13",
+  "Ifnb1",
+  "Ifne",
+  
+  # IFN tipo II
+  "Ifng",
+  
+  # IFN tipo III
+  "Ifnl2",
+  "Ifnl3"
+)
+
+# 3) Genes de respuesta a interferón (ISGs)
+ifn_signaling <- c(
+  # Señalización / regulación
+  "Stat1",
+  "Stat2",
+  "Irf1",
+  "Irf7",
+  "Irf9")
+  
+  # Efectores clásicos
+  ifn_effector <- c(
+  "Mx1",
+  "Oas1a",
+  "Oas2",
+  "Isg15",
+  "Ifit1",
+  "Ifit2",
+  "Ifit3",
+  "Rsad2",
+  "Usp18",
+  "Eif2ak2")
+  
+  # Familia interferon-inducible
+  ifn_inducible <- c(
+  "Ifi202",
+  "Ifi27",
+  "Ifi44",
+  "Ifi47")
+  
+  # Inmunomodulación / presentación de antígeno
+  ifn_modulation <- c(
+  "Cxcl10",
+  "Icam1",
+  "Tap1",
+  "Tap2",
+  "B2m"
+)
+
+Siglec_genes <- c("Siglec1", "Adgre1", "Timd4", "Lyve1", "Mrc1")
+
+
+maria <- c("Ifnar1",
+"Ifnar2",
+"Stat1",
+"Stat2",
+"Irf7",
+"Irf9",
+"Ifit1",
+"Ifit2",
+"Ifit3",
+"Isg15",
+"Siglec1",
+"Cxcl10")
+
+
+
+
+pdf(paste0(outdir,"/Clustering.Round3/Umap_Markers.IFN.R.pdf"), width=18, height=22)
+FeaturePlot_scCustom(data, features= ifn_receptores, reduction = "umap",
+split.by="type")
+dev.off()
+
+
+pdf(paste0(outdir,"/Clustering.Round3/Umap_Markers.IFN.R.group.pdf"), width=12, height=22)
+FeaturePlot_scCustom(data, features= ifn_receptores, reduction = "umap",
+split.by="group")
+dev.off()
+
+data$group <- factor(data$group, levels = c("WT", "KO"))
+
+
+pdf(paste0(outdir,"/Clustering.Round3/Umap_Markers.IFN.genes.group.pdf"), width=12, height=42)
+FeaturePlot_scCustom(data, features= maria, reduction = "umap",
+split.by="group")
+dev.off()
+
+
+
+
+
+
+
+pdf(paste0(outdir,"/Clustering.Round3/Umap_Markers.IFN.P.pdf"), width=18, height=22)
+FeaturePlot_scCustom(data, features= ifn_productores, reduction = "umap",
+split.by="type")
+dev.off()
+
+
+png(paste0(outdir,"/Clustering.Round3/Umap_Markers.IFN.RES.png"), width=2400, height=7800)
+FeaturePlot_scCustom(data, features= ifn_respuesta, reduction = "umap",
+split.by="type")
+dev.off()
+
+pdf(paste0(outdir,"/Clustering.Round3/Umap_Markers.IFN.signaling.pdf"), width=24, height=28)
+FeaturePlot_scCustom(data, features= ifn_signaling, reduction = "umap",
+split.by="type")
+dev.off()
+
+
+pdf(paste0(outdir,"/Clustering.Round3/Umap_Markers.IFN.signaling.group.pdf"), width=12, height=28)
+FeaturePlot_scCustom(data, features= ifn_signaling, reduction = "umap",
+split.by="group")
+dev.off()
+
+pdf(paste0(outdir,"/Clustering.Round3/Umap_Markers.IFN.effector.type.pdf"), width=22, height=36)
+FeaturePlot_scCustom(data, features= ifn_effector, reduction = "umap",
+split.by="type")
+dev.off()
+
+
+pdf(paste0(outdir,"/Clustering.Round3/Umap_Markers.IFN.effector.group.pdf"), width=11, height=36)
+FeaturePlot_scCustom(data, features= ifn_effector, reduction = "umap",
+split.by="group")
+dev.off()
+
+
+
+pdf(paste0(outdir,"/Clustering.Round3/Umap_Markers.IFN.inducible.type.pdf"), width=22, height=16)
+FeaturePlot_scCustom(data, features= ifn_inducible, reduction = "umap",
+split.by="type")
+dev.off()
+
+
+pdf(paste0(outdir,"/Clustering.Round3/Umap_Markers.IFN.inducible.group.pdf"), width=11, height=16)
+FeaturePlot_scCustom(data, features= ifn_inducible, reduction = "umap",
+split.by="group")
+dev.off()
+
+pdf(paste0(outdir,"/Clustering.Round3/Umap_Markers.IFN.modulation.type.pdf"), width=22, height=16)
+FeaturePlot_scCustom(data, features= ifn_modulation, reduction = "umap",
+split.by="type")
+dev.off()
+
+
+pdf(paste0(outdir,"/Clustering.Round3/Umap_Markers.IFN.modulation.group.pdf"), width=11, height=16)
+FeaturePlot_scCustom(data, features= ifn_modulation, reduction = "umap",
+split.by="group")
+dev.off()
+
+pdf(paste0(outdir,"/Clustering.Round3/Umap_Markers.IFN.siglec.type.pdf"), width=22, height=20)
+FeaturePlot_scCustom(data, features= Siglec_genes, reduction = "umap",
+split.by="type")
+dev.off()
+
+
+pdf(paste0(outdir,"/Clustering.Round3/Umap_Markers.IFN.siglec.group.pdf"), width=11, height=20)
+FeaturePlot_scCustom(data, features= Siglec_genes, reduction = "umap",
+split.by="group")
+dev.off()
+
+
+
+pdf(paste0(outdir,"/Clustering.Round3/Umap_Markers.IFN.siglec.group.pdf"), width=11, height=20)
+FeaturePlot_scCustom(data, features= Siglec_genes, reduction = "umap",
+split.by="group")
+dev.off()
+
+
+pdf(paste0(outdir,"/Clustering.Round3/Umap_Markers.IFN.Tfam.group.pdf"), width=18, height=10)
+FeaturePlot_scCustom(data, features= "Tfam", reduction = "umap",
+split.by="group")
+dev.off()
+
+
+pdf(paste0(outdir,"/Clustering.Round3/Umap_Markers.IFN.Tfam.type.pdf"), width=32, height=10)
+FeaturePlot_scCustom(data, features= "Tfam", reduction = "umap",
+split.by="type")
+dev.off()
+
+
+DefaultAssay(data) <- "RNA"
+
+Idents(data) <- "Clustering.Round3"
+
+pdf(
+  paste0(outdir, "/Clustering.Round3/Violin_Markers.IFN.Tfams.pdf"),
+  width = 18,
+  height = 28
+)
+
+VlnPlot(
+  data,
+  features = c("Tfam","mt-Co1","mt-Nd1"),
+  split.by = "type",
+  raster=FALSE,
+  ncol=1,
+  pt.size=0.05
+)
+
+dev.off()
+
+
+
+
+
+pdf(
+  paste0(outdir, "/Clustering.Round3/Violin_Markers.IFN.Receptors.pdf"),
+  width = 18,
+  height = 10
+)
+
+VlnPlot(
+  data,
+  features = ifn_receptores,
+  pt.size = 0,
+  stack = TRUE,
+  flip = TRUE,
+  split.by = "type"
+)
+
+dev.off()
+
+
+
+
+
+pdf(
+  paste0(outdir, "/Clustering.Round3/Violin_Markers.IFN.signaling.pdf"),
+  width = 18,
+  height = 10
+)
+
+VlnPlot(
+  data,
+  features = ifn_signaling,
+  pt.size = 0,
+  stack = TRUE,
+  flip = TRUE,
+  split.by = "type"
+)
+
+dev.off()
+
+
+
+
+pdf(
+  paste0(outdir, "/Clustering.Round3/Violin_Markers.IFN.effector.pdf"),
+  width = 18,
+  height = 14
+)
+
+VlnPlot(
+  data,
+  features = ifn_effector,
+  pt.size = 0,
+  stack = TRUE,
+  flip = TRUE,
+  split.by = "type"
+)
+
+dev.off()
+
+
+
+pdf(
+  paste0(outdir, "/Clustering.Round3/Violin_Markers.IFN.inducible.pdf"),
+  width = 18,
+  height = 10
+)
+
+VlnPlot(
+  data,
+  features = ifn_inducible,
+  pt.size = 0,
+  stack = TRUE,
+  flip = TRUE,
+  split.by = "type"
+)
+
+dev.off()
+
+
+
+
+pdf(
+  paste0(outdir, "/Clustering.Round3/Violin_Markers.IFN.siglec.pdf"),
+  width = 18,
+  height = 10
+)
+
+VlnPlot(
+  data,
+  features = Siglec_genes,
+  pt.size = 0,
+  stack = TRUE,
+  flip = TRUE,
+  split.by = "type"
+)
+
+dev.off()
+
+
+
+
+
+genes_ifnI <- c("Irf7", "Stat1", "Stat2", "Isg15", "Ifit1")
+
+
+pdf(
+  paste0(outdir, "/Clustering.Round3/Violin_IFN_I_Core.pdf"),
+  width = 18,
+  height = 10
+)
+
+VlnPlot(
+  data,
+  features = genes_ifnI,
+  pt.size = 0,
+  stack = TRUE,
+  flip = TRUE,
+  same.y.lims = TRUE,
+  split.by = "type"
+)
+
+dev.off()
+
+
+
+
+
+
+
+### Bubble plots for clustyering round 3
+
+## DEG
+
+
+# Clusters of interest
+macro_clusters <- c(
+  "Ly6cHi Monocytes", "Ly6cLo Monocytes", "Early IFN|MHCII-TAMs",
+    "Trem1|Ptgs2|Plaur|Celc4e Mac",
+    "Mrc1|C1qc|Cbr2|Gas6 Mac",
+    "Arg1|Spp1|Mmp12|Mmp19|Il1a Mac",
+    "Npr2|Actn1 Mac",
+    "Mmp9|Ctsk Mac",
+    "IFN Mac",
+    "Fn1|Vegfa Mac",
+    "MHCII|Siglec Mac",
+    "MHCII|Ccl12 Mac"
+)
+
+macros <- subset(data, subset = Clustering.Round3 %in% macro_clusters)
+
+
+Idents(macros) <- "Clustering.Round3"
+
+
+markers <- FindAllMarkers(
+  object = macros,
+  only.pos = TRUE,
+  min.pct = 0.2,
+  logfc.threshold = 0.25
+)
+
+head(markers)
+
+
+top30_per_cluster <- markers %>%
+  group_by(cluster) %>%
+  slice_min(order_by = p_val_adj, n = 30, with_ties = FALSE) %>%
+  ungroup()
+
+
+as.data.frame(top30_per_cluster)
+
+
+write.table(markers, paste0(rsdir,"table.clusters.markers.Clusterized.R3.tsv"), sep='\t')
+
+
+write.table(top30_per_cluster, paste0(rsdir,"table.clusters.markers.Clusterized.top30.R3.tsv"), sep='\t')
+
+
+
+### Bubble plot for markers
+
+
+clusters<- read.table(paste0(rsdir,"table.clusters.markers.Clusterized.top30.R3.tsv"), sep='\t', header=T)
+
+
+# Epsilon to avoid zero multiplication
+epsilon <- 1e-8
+
+# New column 'score'
+clusters <- clusters %>%
+  mutate(score = avg_log2FC * abs(pct.1 - pct.2 + epsilon))
+
+
+
+clusters_macro <- clusters %>%
+  filter(cluster %in% macro_clusters)
+
+clusters_otros <- clusters %>%
+  filter(!cluster %in% macro_clusters)
+
+
+macros <- subset(data, subset = Clustering.Round3 %in% macro_clusters)
+
+others <- subset(data, subset = Clustering.Round2 %in% macro_clusters, invert = TRUE)
+
+
+
+
+
+# For 5 genes per cluster
+top_markers_subset <- clusters_macro %>%
+  group_by(cluster) %>%
+  slice_max(order_by = score, n = 4) %>%
+  pull(gene)
+
+
+top_markers_subset <- unique(top_markers_subset)
+
+genes <- c(
+  "F10","Slc7a2","Mmp12","Inhba","Spp1","Ms4a4c","Spon1","Oas3","Irf7",
+  "Isg15","Emp1","Arg1","Fn1","Vegfa","F13a1","Slc27a1","Ifit3","Ifit2",
+  "Oas2","Ifi44","Usp18","Plac8","Slfn4","Ly6c2","Sell","Rsad2","Gsr",
+  "Hp","Cd244a","Vcan","Adgre5","Ciita","Tent5c","Slamf7","H2-DMb1",
+  "Nr4a3","H2-DMa","Cp","Siglec1","Siglece","Ighm","Icosl","Mmp9",
+  "Atp6v0d2","Ctsk","Actn1","Coq8a","Gas6","Mrc1","Cbr2","Fcrls",
+  "C1qc","Npr2","Stmn1","Igf2r","Sdc1","Trem1","Ptgs2","Cd80",
+  "Plaur","Clec4e"
+)
+
+
+
+# For 5 genes per cluster
+top_markers_subset2 <- clusters_otros  %>%
+  group_by(cluster) %>%
+  slice_max(order_by = avg_log2FC, n = 5) %>%
+  pull(gene)
+
+
+cluster_order <- c(
+  "Ly6cHi Monocytes", 
+  "Ly6cLo Monocytes", 
+  "Early IFN|MHCII-TAMs",
+  "Trem1|Ptgs2|Plaur|Celc4e Mac",
+  "Mrc1|C1qc|Cbr2|Gas6 Mac",
+  "Arg1|Spp1|Mmp12|Mmp19|Il1a Mac",
+  "Npr2|Actn1 Mac",
+  "Mmp9|Ctsk Mac",
+  "IFN Mac",
+  "Fn1|Vegfa Mac",
+  "MHCII|Siglec Mac",
+  "MHCII|Ccl12 Mac",
+  "Neutrophils"
+)
+
+
+
+
+nora.colors2 <- c(
+  "Ly6cHi Monocytes"     = "#FF0000",  # Rojo inflamatorio puro
+  "Ly6cLo Monocytes"     = "#FF6A6A",  # Rojo salmón transición
+  "Early IFN|MHCII-TAMs"       = "#B22222", 
+  "Trem1|Ptgs2|Plaur|Celc4e Mac"   = "#EE7942",
+  "Mrc1|C1qc|Cbr2|Gas6 Mac"        = "#FFD92F",
+  "Arg1|Spp1|Mmp12|Mmp19|Il1a Mac" = "#4DAF4A",
+  "Npr2|Actn1 Mac"                 = "#A6D854",
+  "Neutrophils"                    = "#4876FF",
+  "Mmp9|Ctsk Mac"                  = "#00723F",
+  "IFN Mac"                        = "#C080FF",
+  "Fn1|Vegfa Mac"                  = "#FFA500",
+  "MHCII|Siglec Mac"               = "#1E90FF",
+  "MHCII|Ccl12 Mac"                = "#4682B4"
+)
+
+
+macros$Clustering.Round3 <- factor(macros$Clustering.Round3)
+macros$Clustering.Round3 <- droplevels(macros$Clustering.Round3)
+table(macros$Clustering.Round3)
+
+
+macros$Clustering.Round3 <- factor(macros$Clustering.Round3, levels = cluster_order)
+Idents(macros) <- "Clustering.Round3"
+
+
+# --- Plots---
+
+pdf(paste0(outdir, "/Clustering.Round3/bubble.macros.pdf"), width = 12, height = 14)
+p <- Clustered_DotPlot(
+  seurat_object = macros,
+  features = genes,
+  colors_use_idents = nora.colors2,
+  k=5
+)
+
+print(p[[1]])
+dev.off()
+
+
+
+# ===============================
+# Libraries
+# ===============================
+library(Seurat)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(tibble)
+
+# ===============================
+# Colores de clusters (FIJOS)
+# ===============================
+nora.colors2 <- c(
+  "Ly6cHi Monocytes"              = "#FF0000",
+  "Ly6cLo Monocytes"              = "#FF6A6A",
+  "Early IFN|MHCII-TAMs"           = "#B22222",
+  "Trem1|Ptgs2|Plaur|Celc4e Mac"   = "#EE7942",
+  "Mrc1|C1qc|Cbr2|Gas6 Mac"        = "#FFD92F",
+  "Arg1|Spp1|Mmp12|Mmp19|Il1a Mac" = "#4DAF4A",
+  "Npr2|Actn1 Mac"                = "#A6D854",
+  "Neutrophils"                   = "#4876FF",
+  "Mmp9|Ctsk Mac"                 = "#00723F",
+  "IFN Mac"                       = "#C080FF",
+  "Fn1|Vegfa Mac"                 = "#FFA500",
+  "MHCII|Siglec Mac"              = "#1E90FF",
+  "MHCII|Ccl12 Mac"               = "#4682B4"
+)
+
+# ===============================
+# Genes
+# ===============================
+genes <- unique(c(
+  "F10","Slc7a2","Mmp12","Inhba","Spp1","Ms4a4c","Spon1","Oas3","Irf7",
+  "Isg15","Emp1","Arg1","Fn1","Vegfa","F13a1","Slc27a1","Ifit3","Ifit2",
+  "Oas3","Ifi44","Usp18","Plac8","Slfn4","Ly6c2","Sell","Rsad2","Gsr",
+  "Hp","Cd244a","Vcan","Adgre5","Ciita","Tent5c","Slamf7","H2-DMb1",
+  "Nr4a3","H2-DMa","Cp","Siglec1","Siglece","Ighm","Icosl","Mmp9",
+  "Atp6v0d2","Ctsk","Actn1","Coq8a","Gas6","Mrc1","Cbr2","Fcrls",
+  "C1qc","Nrp2","Stmn1","Igf2r","Sdc1","Trem1","Ptgs2","Cd80",
+  "Plaur","Clec4e"
+))
+
+
+
+
+# ===============================
+# Generar Clustered_DotPlot
+# ===============================
+pdf(paste0(outdir, "/Clustering.Round3/bubble_macros_clustered.pdf"),
+    width = 12, height = 14)
+
+p <- Clustered_DotPlot(
+  seurat_object = macros,
+  features = genes,
+  colors_use_idents=nora.colors2,
+  k = 5  # número de clusters jerárquicos de genes
+)
+
+# Imprimir plots
+print(p[[1]])  # bubble plot principal
+print(p[[2]])  # heatmap lateral
+dev.off()
+
+
+
+
+
+clusters_data <- c(
+  "Activated B cells",
+  "B cells",
+  "Cd4 Activated",
+  "Cd4 Naive",
+  "Cd4 Th17",
+  "Cd4 Treg",
+  "Cd8 Effector",
+  "DCs",
+  "Mastocytes",
+  "Neutrophils",
+  "NK"
+)
+
+
+
+
+# --- Plots ---
+pdf(paste0(outdir, "/Analysis/bubble.macros.k5.pdf"), width=12, height=14)
+
+p <- Clustered_DotPlot(seurat_object = macros, features = top_markers_subset,
+colors_use_idents = nora.colors2)
+
+
+print(p[[1]])
+dev.off()
+
+
+
+nora.colors3 <- nora.colors[!names(nora.colors) %in% names(nora.colors2)]
+
+
+# 1️⃣ Identificar los clusters con >0 células
+clusters_present <- names(table(others$Cluster))[table(others$Cluster) > 0]
+
+# 2️⃣ Crear nora.colors3 con solo esos clusters
+nora.colors3 <- nora.colors[clusters_present]
+
+# 3️⃣ Revisar
+nora.colors3
+
+
+
+
+Idents(others) <- factor(Idents(others), levels = names(nora.colors3))
+
+# --- Graficar y exportar ---
+pdf(paste0(outdir, "/Analysis/bubble.other.pdf"), width=10, height=10)
+
+p <- Clustered_DotPlot(seurat_object = others, features = top_markers_subset2,
+colors_use_idents = nora.colors3)
+
+
+print(p[[1]])
+dev.off()
+
+
+# --- Graficar y exportar ---
+pdf(paste0(outdir, "/Analysis/bubble.other.k4.pdf"), width=12, height=14)
+
+p <- Clustered_DotPlot(seurat_object = others, features = top_markers_subset2,
+colors_use_idents = nora.colors3, k=4)
+
+
+print(p[[1]])
+dev.off()
+
+
+
+
+# Filtrar nora.colors para que solo tenga los clusters presentes en 'macros'
+nora.colors.filtered <- nora.colors[names(nora.colors) %in% levels(Idents(macros))]
+
+# Asegurarnos de que los niveles del objeto Seurat estén en el mismo orden
+Idents(macros) <- factor(Idents(macros), levels = names(nora.colors.filtered))
+
+
+pdf(paste0(outdir, "/Analysis/bubble.macros.pdf"), width=12, height=14)
+
+p <- Clustered_DotPlot(seurat_object = macros, features = top_markers_subset)
+
+# Alinear colores con los niveles actuales del objeto
+p[[1]] <- p[[1]] +
+  scale_color_manual(values = nora.colors[levels(macros)]) +
+  scale_fill_manual(values = nora.colors[levels(macros)])
+
+print(p[[1]])
+dev.off()
+
+
+
+
+# 2️⃣ Seleccionar los 8 principales genes por cluster
+top8_markers <- clusters %>%
+  group_by(cluster) %>%
+  slice_max(order_by = avg_log2FC, n = 6) %>%
+  ungroup()
+
+# Eliminar duplicados de la lista de genes
+top8_genes <- unique(top8_markers$gene)
+
+# 3️⃣ Crear el dotplot sin duplicados
+dotplot <- DotPlot(
+  object = macros,
+  features = top_markers_subset
+) +
+  RotatedAxis() +
+  scale_color_gradient(low = "lightgrey", high = "red") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+
+
+pdf(paste0(outdir,"/Analysis/bubble1.pdf"), width=36, height=12)
+print(dotplot)
 dev.off()

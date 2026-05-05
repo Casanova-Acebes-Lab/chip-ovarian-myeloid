@@ -9,7 +9,6 @@ library(SingleR)
 library(SingleCellExperiment)
 library(SoupX)
 library(future)
-library(dplyr)
 library(DoubletFinder)
 
 
@@ -36,29 +35,30 @@ plan(sequential)
 
  # SoupX
 
+outsoupx_dir <- "/storage/scratch01/users/dcaceres/Sarai_Soupx"
 
-process_library(paste0(datadir, "/Cellranger/smR065"), output_dir = paste0(datadir, "/SoupX/2.0/smR065"))
-process_library(paste0(datadir, "/Cellranger/SmR039a.9"), output_dir = paste0(datadir, "/SoupX/2.0/SmR039a.9"))
-process_library(paste0(datadir, "/Cellranger/SmR039b.9"), output_dir = paste0(datadir, "/SoupX/2.0/SmR039b.9"))
+
+process_library(paste0(datadir, "Cellranger/smR065.9"), output_dir = paste0(outsoupx_dir, "/smR065.9"))
+process_library(paste0(datadir, "Cellranger/smR039a.9"), output_dir = paste0(outsoupx_dir, "/SmR039a.9"))
+process_library(paste0(datadir, "Cellranger/SmR039b.9"), output_dir = paste0(outsoupx_dir, "/SmR039b.9"))
 
 
 #### Doublets
 
 
-smpR065_DsRedP_KO3 <-readRDS(paste0(datadir,"SoupX/2.0/smR065/Seurat_smpR065_DsRedP-KO3.rds"))
+smpR065_DsRedP_KO3 <-readRDS(paste0(outsoupx_dir,"/smR065.9/Seurat_smpR065_DsRedP-KO3.rds"))
 
-smR039a_WT1_DsRedn <-readRDS(paste0(datadir,"SoupX/2.0/SmR039a.9/Seurat_WT1-DsRedn.rds"))
-smR039a_WT1_DsRedp <-readRDS(paste0(datadir,"SoupX/2.0/SmR039a.9/Seurat_WT1-DsRedp.rds"))
-smR039a_DsRedN_KO2 <-readRDS(paste0(datadir,"SoupX/2.0/SmR039a.9/Seurat_KO2-DsRedn.rds"))
-smR039a_DsRedP_KO2 <-readRDS(paste0(datadir,"SoupX/2.0/SmR039a.9/Seurat_KO2-DsRedp.rds"))
+smR039a_WT1_DsRedn <-readRDS(paste0(outsoupx_dir,"/SmR039a.9/Seurat_WT1-DsRedn.rds"))
+smR039a_WT1_DsRedp <-readRDS(paste0(outsoupx_dir,"/SmR039a.9/Seurat_WT1-DsRedp.rds"))
+smR039a_DsRedN_KO2 <-readRDS(paste0(outsoupx_dir,"/SmR039a.9/Seurat_KO2-DsRedn.rds"))
+smR039a_DsRedP_KO2 <-readRDS(paste0(outsoupx_dir,"/SmR039a.9/Seurat_KO2-DsRedp.rds"))
 
-smR039b_WT2_DsRedn <-readRDS(paste0(datadir,"SoupX/2.0/SmR039b.9/Seurat_WT2-DsRedn.rds"))
-smR039b_WT2_DsRedp <-readRDS(paste0(datadir,"SoupX/2.0/SmR039b.9/Seurat_WT2-DsRedp.rds"))
-smR039b_DsRedN_KO3 <-readRDS(paste0(datadir,"SoupX/2.0/SmR039b.9/Seurat_KO3-DsRedn.rds"))
+smR039b_WT2_DsRedn <-readRDS(paste0(outsoupx_dir,"/SmR039b.9/Seurat_WT2-DsRedn.rds"))
+smR039b_WT2_DsRedp <-readRDS(paste0(outsoupx_dir,"/SmR039b.9/Seurat_WT2-DsRedp.rds"))
+smR039b_DsRedN_KO3 <-readRDS(paste0(outsoupx_dir,"/SmR039b.9/Seurat_KO3-DsRedn.rds"))
 
 
 seurat_list <- list(
-
   smpR065_DsRedP_KO3,
   smR039a_WT1_DsRedn,
   smR039a_WT1_DsRedp,
@@ -89,22 +89,22 @@ process_seurat_samples(seurat_list, seurat_names)
 PCA.DsRedP_KO3<- PCA(smpR065_DsRedP_KO3)
 PCA.DsRedP_KO3[1]
 PCA.DsRedP_KO3[2]
-#12
+#13
 
 PCA.WT1_DsRedn <- PCA(smR039a_WT1_DsRedn)
 PCA.WT1_DsRedn[1]
 PCA.WT1_DsRedn[2]
-#15
+#19
 
 PCA.WT1_DsRedp <- PCA(smR039a_WT1_DsRedp)
 PCA.WT1_DsRedp[1]
 PCA.WT1_DsRedp[2]
-#17
+#18
 
 PCA.DsRedN_KO2 <- PCA(smR039a_DsRedN_KO2)
 PCA.DsRedN_KO2[1]
 PCA.DsRedN_KO2[2]
-#10
+#15
 
 PCA.DsRedP_KO2 <- PCA(smR039a_DsRedP_KO2)
 PCA.DsRedP_KO2[1]
@@ -119,7 +119,7 @@ PCA.WT2_DsRedn[2]
 PCA.WT2_DsRedp <- PCA(smR039b_WT2_DsRedp)
 PCA.WT2_DsRedp[1]
 PCA.WT2_DsRedp[2]
-#12
+#11
 
 PCA.DsRedN_KO3<- PCA(smR039b_DsRedN_KO3)
 PCA.DsRedN_KO3[1]
@@ -131,16 +131,16 @@ PCA.DsRedN_KO3[2]
 #UMAP
 
 
-smpR065_DsRedP_KO3 <- umap(smpR065_DsRedP_KO3,"12")
+smpR065_DsRedP_KO3 <- umap(smpR065_DsRedP_KO3,"13")
 
-smR039a_WT1_DsRedn <- umap(smR039a_WT1_DsRedn,"15")
-smR039a_WT1_DsRedp <- umap(smR039a_WT1_DsRedp,"17")
-smR039a_DsRedN_KO2 <- umap(smR039a_DsRedN_KO2,"10")
+smR039a_WT1_DsRedn <- umap(smR039a_WT1_DsRedn,"19")
+smR039a_WT1_DsRedp <- umap(smR039a_WT1_DsRedp,"18")
+smR039a_DsRedN_KO2 <- umap(smR039a_DsRedN_KO2,"15")
 smR039a_DsRedP_KO2 <- umap(smR039a_DsRedP_KO2,"14")
 
 
 smR039b_WT2_DsRedn <- umap(smR039b_WT2_DsRedn,"14")
-smR039b_WT2_DsRedp <- umap(smR039b_WT2_DsRedp,"12")
+smR039b_WT2_DsRedp <- umap(smR039b_WT2_DsRedp,"11")
 smR039b_DsRedN_KO3 <- umap(smR039b_DsRedN_KO3,"11")
 
 
@@ -237,32 +237,32 @@ seurat_obj <- doubletFinder(
 
 
 
-smpR065_DsRedP_KO3 <- process_doublets_single_with_rate(smpR065_DsRedP_KO3, nPCs = 12, pN = 0.25, doublet_rate_base = 0.075)
+smpR065_DsRedP_KO3 <- process_doublets_single_with_rate(smpR065_DsRedP_KO3, nPCs = 13, pN = 0.25, doublet_rate_base = 0.075)
 
-smR039a_WT1_DsRedn <- process_doublets_single_with_rate(smR039a_WT1_DsRedn, nPCs = 15, pN = 0.25, doublet_rate_base = 0.075)
-smR039a_WT1_DsRedp <- process_doublets_single_with_rate(smR039a_WT1_DsRedp, nPCs = 17, pN = 0.25, doublet_rate_base = 0.075)
-smR039a_DsRedN_KO2 <- process_doublets_single_with_rate(smR039a_DsRedN_KO2, nPCs = 10, pN = 0.25, doublet_rate_base = 0.075)
+smR039a_WT1_DsRedn <- process_doublets_single_with_rate(smR039a_WT1_DsRedn, nPCs = 19, pN = 0.25, doublet_rate_base = 0.075)
+smR039a_WT1_DsRedp <- process_doublets_single_with_rate(smR039a_WT1_DsRedp, nPCs = 18, pN = 0.25, doublet_rate_base = 0.075)
+smR039a_DsRedN_KO2 <- process_doublets_single_with_rate(smR039a_DsRedN_KO2, nPCs = 15, pN = 0.25, doublet_rate_base = 0.075)
 smR039a_DsRedP_KO2 <- process_doublets_single_with_rate(smR039a_DsRedP_KO2, nPCs = 14, pN = 0.25, doublet_rate_base = 0.075)
 
 smR039b_WT2_DsRedn <- process_doublets_single_with_rate(smR039b_WT2_DsRedn, nPCs = 14, pN = 0.25, doublet_rate_base = 0.075)
-smR039b_WT2_DsRedp <- process_doublets_single_with_rate(smR039b_WT2_DsRedp, nPCs = 12, pN = 0.25, doublet_rate_base = 0.075)
+smR039b_WT2_DsRedp <- process_doublets_single_with_rate(smR039b_WT2_DsRedp, nPCs = 11, pN = 0.25, doublet_rate_base = 0.075)
 smR039b_DsRedN_KO3 <- process_doublets_single_with_rate(smR039b_DsRedN_KO3, nPCs = 11, pN = 0.25, doublet_rate_base = 0.075)
 
 
 
 
 
-saveRDS(smpR065_DsRedP_KO3,paste0(datadir,"SoupX/2.0/smR065/Seurat_smpR065_DsRedP-KO3.2.rds"))
+saveRDS(smpR065_DsRedP_KO3,paste0(outsoupx_dir,"/smR065.9/Seurat_smpR065_DsRedP-KO3.2.rds"))
 
-saveRDS(smR039a_WT1_DsRedn,paste0(datadir,"SoupX/2.0/SmR039a.9/Seurat_WT1-DsRedn.2.rds"))
-saveRDS(smR039a_WT1_DsRedp,paste0(datadir,"SoupX/2.0/SmR039a.9/Seurat_WT1-DsRedp.2.rds"))
-saveRDS(smR039a_DsRedN_KO2,paste0(datadir,"SoupX/2.0/SmR039a.9/Seurat_KO2-DsRedn.2.rds"))
-saveRDS(smR039a_DsRedP_KO2,paste0(datadir,"SoupX/2.0/SmR039a.9/Seurat_KO2-DsRedp.2.rds"))
+saveRDS(smR039a_WT1_DsRedn,paste0(outsoupx_dir,"/SmR039a.9/Seurat_WT1-DsRedn.2.rds"))
+saveRDS(smR039a_WT1_DsRedp,paste0(outsoupx_dir,"/SmR039a.9/Seurat_WT1-DsRedp.2.rds"))
+saveRDS(smR039a_DsRedN_KO2,paste0(outsoupx_dir,"/SmR039a.9/Seurat_KO2-DsRedn.2.rds"))
+saveRDS(smR039a_DsRedP_KO2,paste0(outsoupx_dir,"/SmR039a.9/Seurat_KO2-DsRedp.2.rds"))
 
 
-saveRDS(smR039b_WT2_DsRedn,paste0(datadir,"SoupX/2.0/SmR039b.9/Seurat_WT2-DsRedn.2.rds"))
-saveRDS(smR039b_WT2_DsRedp,paste0(datadir,"SoupX/2.0/SmR039b.9/Seurat_WT2-DsRedp.2.rds"))
-saveRDS(smR039b_DsRedN_KO3,paste0(datadir,"SoupX/2.0/SmR039b.9/Seurat_KO3-DsRedn.2.rds"))
+saveRDS(smR039b_WT2_DsRedn,paste0(outsoupx_dir,"/SmR039b.9/Seurat_WT2-DsRedn.2.rds"))
+saveRDS(smR039b_WT2_DsRedp,paste0(outsoupx_dir,"/SmR039b.9/Seurat_WT2-DsRedp.2.rds"))
+saveRDS(smR039b_DsRedN_KO3,paste0(outsoupx_dir,"/SmR039b.9/Seurat_KO3-DsRedn.2.rds"))
 
 
 # Plots
@@ -297,18 +297,18 @@ dev.off()
 
 
 psmR039b_WT2_DsRedn <- plot(smR039b_WT2_DsRedn,"WT2_DsRedn")
-png(paste0(outdir,"/SoupX.Doublet/WT2_DsRedn.png"), width=800, height=600)
+png(paste0(outdir,"/SoupX.Doublet/2.0/WT2_DsRedn.png"), width=800, height=600)
 psmR039b_WT2_DsRedn
 dev.off()
 
 
 psmR039b_WT2_DsRedp <- plot(smR039b_WT2_DsRedp,"WT2_DsRedp")
-png(paste0(outdir,"/SoupX.Doublet/WT2_DsRedp.png"), width=800, height=600)
+png(paste0(outdir,"/SoupX.Doublet/2.0/WT2_DsRedp.png"), width=800, height=600)
 psmR039b_WT2_DsRedp
 dev.off()
 
 psmR039b_DsRedN_KO3 <- plot(smR039b_DsRedN_KO3,"DsRedN_KO3")
-png(paste0(outdir,"/SoupX.Doublet/DsRedN_KO3.png"), width=800, height=600)
+png(paste0(outdir,"/SoupX.Doublet/2.0/DsRedN_KO3.png"), width=800, height=600)
 psmR039b_DsRedN_KO3
 dev.off()
 

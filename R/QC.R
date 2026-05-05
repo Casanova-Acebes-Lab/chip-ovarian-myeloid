@@ -31,6 +31,7 @@ datadir <- values["datadir"]
 outdir <- values["outdir"]
 
 
+
 source("R/Functions.R")
 
 
@@ -1764,32 +1765,53 @@ table(res_allmacs$diffexpressed)
 write.table(res_allmacs, paste0(rsdir,"table.macros.ALL Mac.tsv"), sep='\t')
 
 
-Volcano2 <- function(data, legend, logFC_threshold = 0.5) {
+
+Volcano2 <- function(data, legend, logFC_threshold = 0.5, top_n = 40) {
+  library(ggplot2)
+  library(ggrepel)
+  
   data$gene <- rownames(data)
   
-  # Solo etiquetar genes diferencialmente expresados
-  data$label <- ifelse(data$diffexpressed != "NO", data$gene, NA)
+  # Score combinado: logFC * -log10(padj)
+  data$score <- abs(data$logFC) * -log10(data$adj.P.Val)
   
+  # Separar Up y Down
+  up_genes <- data[data$diffexpressed == "Up", ]
+  down_genes <- data[data$diffexpressed == "Down", ]
+  
+  # Top N para puntos y etiquetas
+  top_up <- up_genes[order(-up_genes$score), ][1:min(top_n, nrow(up_genes)), ]
+  top_down <- down_genes[order(-down_genes$score), ][1:min(top_n, nrow(down_genes)), ]
+  
+  # Combinar top genes
+  top_genes <- rbind(top_up, top_down)
+  data$label <- ifelse(data$gene %in% top_genes$gene, data$gene, NA)
+  
+  # Graficar
   plot <- ggplot(data, aes(x = logFC, y = -log10(adj.P.Val),
                            color = diffexpressed)) +
-    geom_point() +
-    geom_text_repel(
+    geom_point(alpha = 0.8) +  # Ya no escalamos por score
+    geom_label_repel(
       data = subset(data, !is.na(label)),
       aes(label = label),
-      size = 3,
-      segment.colour = NA,
-      force = 2,
+      size = 3.5,
       box.padding = 0.5,
-      point.padding = 0.5
+      point.padding = 0.5,
+      segment.color = "grey50",
+      segment.size = 0.5,
+      force = 3,
+      max.overlaps = 80,    # Permite hasta 80 etiquetas
+      fill = alpha("white", 0.7)  # Fondo semitransparente
     ) +
     geom_vline(xintercept = c(-logFC_threshold, logFC_threshold),
                linetype = "dashed", color = "black") +
-    theme_minimal() +
     scale_color_manual(values = c("Down" = "dodgerblue4",
                                   "NO"   = "dimgrey",
                                   "Up"   = "brown1")) +
     ggtitle(paste("DEG", legend)) +
-    labs(x = "logFC", y = "-log10(adj.pval)")
+    labs(x = "logFC", y = "-log10(adj.pval)") +
+    theme_classic() +
+    theme(legend.position = "bottom")
   
   return(plot)
 }
@@ -1800,7 +1822,7 @@ Volcano2 <- function(data, legend, logFC_threshold = 0.5) {
 p <- Volcano2(data = res_allmacs, legend = "KO vs WT samples. All Macrophages clusters")
 
 
-pdf(paste0(outdir,"/QC/Volcano.KO vs WT Macrophages.pdf"), width=16, height=12)
+pdf(paste0(outdir,"/QC/Volcano.KO vs WT Macrophages2.pdf"), width=20, height=10)
 print(p)
 dev.off()
 

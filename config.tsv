@@ -1,4 +1,4 @@
 key	value
-rsdir	Results/
+rsdir	Results
 datadir	data/input/
 outdir	Results/plots

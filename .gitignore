@@ -1,7 +1,12 @@
-# All files
+# Ignore everything
 *
-
-# Except:
-!R/
-!config.tsv
+# Except these
 !.gitignore
+!config.tsv
+!R/
+!R/**
+!Bash/
+!Bash/**
+!Python/
+!Python/**
+
